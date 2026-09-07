@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CAP_LANGUAGES,
   ALERT_TEMPLATES,
@@ -9,6 +9,7 @@ import {
 } from '../data/mockData';
 import { AuditLogEntry, TacticalUnit, ReliefShelter } from '../types';
 import { sirenPlayer } from '../utils/audioSiren';
+import { LandslideApi } from '../services/api';
 import {
   BellRing,
   Radio,
@@ -39,7 +40,25 @@ export const BroadcastAndDispatch: React.FC<BroadcastAndDispatchProps> = ({
   const [messageText, setMessageText] = useState<string>(ALERT_TEMPLATES['en']);
   const [isArmed, setIsArmed] = useState<boolean>(true);
   const [auditList, setAuditList] = useState<AuditLogEntry[]>(AUDIT_LOGS);
+  const [tacticalUnits, setTacticalUnits] = useState<TacticalUnit[]>(TACTICAL_UNITS);
+  const [reliefShelters, setReliefShelters] = useState<ReliefShelter[]>(RELIEF_SHELTERS);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    LandslideApi.getAuditLogs().then((logs) => {
+      if (active && logs && logs.length > 0) setAuditList(logs);
+    });
+    LandslideApi.getTacticalUnits().then((units) => {
+      if (active && units && units.length > 0) setTacticalUnits(units);
+    });
+    LandslideApi.getReliefShelters().then((shelters) => {
+      if (active && shelters && shelters.length > 0) setReliefShelters(shelters);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -73,6 +92,7 @@ export const BroadcastAndDispatch: React.FC<BroadcastAndDispatchProps> = ({
 
     setAuditList([newLog, ...auditList]);
     sirenPlayer.start();
+    LandslideApi.triggerSiren('NH-10 Singtam-Rangpo Corridor', 6).catch(console.warn);
     showToast('SUCCESS: High-Priority CAP Emergency Alert pushed to 142,800 active cellular handsets in geofence!');
     if (onSirenTriggered) onSirenTriggered();
   };

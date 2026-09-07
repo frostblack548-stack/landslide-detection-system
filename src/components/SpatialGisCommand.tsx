@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HazardZone, SensorNode, NerState } from '../types';
 import { HAZARD_ZONES, SENSOR_NODES, ASSET_URLS } from '../data/mockData';
+import { LandslideApi } from '../services/api';
 import {
   Layers,
   Crosshair,
@@ -44,17 +45,38 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
   const [mapZoom, setMapZoom] = useState(1);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [zones, setZones] = useState<HazardZone[]>(HAZARD_ZONES);
+  const [sensors, setSensors] = useState<SensorNode[]>(SENSOR_NODES);
+
+  useEffect(() => {
+    let active = true;
+    LandslideApi.getHazardZones(selectedState).then((data) => {
+      if (active && data && data.length > 0) {
+        setZones(data);
+        setSelectedZone(data[0]);
+      }
+    });
+    LandslideApi.getSensors(selectedState).then((data) => {
+      if (active && data && data.length > 0) {
+        setSensors(data);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [selectedState]);
+
   // Filter hazard zones according to state
   const filteredZones =
     selectedState === 'all'
-      ? HAZARD_ZONES
-      : HAZARD_ZONES.filter((z) => z.state === selectedState);
+      ? zones
+      : zones.filter((z) => z.state === selectedState);
 
   // Filter sensors
   const filteredSensors =
     selectedState === 'all'
-      ? SENSOR_NODES
-      : SENSOR_NODES.filter((s) => s.state === selectedState);
+      ? sensors
+      : sensors.filter((s) => s.state === selectedState);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -268,7 +290,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
 
             {/* Simulated Satellite GIS Canvas with Vector Overlays */}
             <div
-              className={`relative h-[340px] sm:h-[420px] bg-[#051424] overflow-hidden transition-all duration-500 select-none ${
+              className={`relative h-[340px] sm:h-[420px] bg-[#051424] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(12,65,96,0.6),rgba(5,20,36,0.95))] overflow-hidden transition-all duration-500 select-none ${
                 is3DMode ? 'perspective-1000 rotate-x-6' : ''
               }`}
             >
@@ -276,7 +298,10 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
               <img
                 src={ASSET_URLS.gisSatelliteMap}
                 alt="Satellite Topography"
-                className="w-full h-full object-cover opacity-60 mix-blend-luminosity filter contrast-125"
+                className="w-full h-full object-cover opacity-65 mix-blend-luminosity filter contrast-125"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.opacity = '0';
+                }}
                 style={{
                   transform: `scale(${mapZoom})`,
                   transition: 'transform 0.4s ease',

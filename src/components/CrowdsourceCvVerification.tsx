@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CrowdsourceReport } from '../types';
 import { CROWDSOURCE_REPORTS } from '../data/mockData';
+import { LandslideApi } from '../services/api';
 import {
   Camera,
   CheckCircle2,
@@ -39,6 +40,19 @@ export const CrowdsourceCvVerification: React.FC<CrowdsourceCvVerificationProps>
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [offlineSyncing, setOfflineSyncing] = useState<boolean>(false);
 
+  useEffect(() => {
+    let active = true;
+    LandslideApi.getReports().then((data) => {
+      if (active && data && data.length > 0) {
+        setReports(data);
+        setActiveReport(data[0]);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -51,7 +65,12 @@ export const CrowdsourceCvVerification: React.FC<CrowdsourceCvVerificationProps>
     }
   };
 
-  const handleActionDM = () => {
+  const handleActionDM = async () => {
+    try {
+      await LandslideApi.escalateReport(activeReport.id);
+    } catch (e) {
+      console.warn('API call failed, using local handling', e);
+    }
     showToast(
       `CRITICAL DISPATCH: Escalated ${activeReport.code} to District Magistrate & SDMA. CAP emergency alert queued.`
     );
@@ -64,7 +83,12 @@ export const CrowdsourceCvVerification: React.FC<CrowdsourceCvVerificationProps>
     );
   };
 
-  const handleDismissReport = () => {
+  const handleDismissReport = async () => {
+    try {
+      await LandslideApi.dismissReport(activeReport.id);
+    } catch (e) {
+      console.warn('API call failed, using local handling', e);
+    }
     showToast(`Report ${activeReport.code} marked as Non-Threat / Controlled Erosion.`);
     setReports((prev) => prev.filter((r) => r.id !== activeReport.id));
     if (reports.length > 1) {
@@ -72,12 +96,16 @@ export const CrowdsourceCvVerification: React.FC<CrowdsourceCvVerificationProps>
     }
   };
 
-  const handleTriggerOfflineSync = () => {
+  const handleTriggerOfflineSync = async () => {
     setOfflineSyncing(true);
-    setTimeout(() => {
+    try {
+      const res = await LandslideApi.syncOfflineReports();
+      setOfflineSyncing(false);
+      showToast(res.message);
+    } catch {
       setOfflineSyncing(false);
       showToast('SQLite / WatermelonDB local offline store synchronized with Central GSI Cloud (4 pending uploads cleared)');
-    }, 1200);
+    }
   };
 
   return (

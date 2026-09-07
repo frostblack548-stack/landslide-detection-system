@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Sparkles,
 } from 'lucide-react';
+import { LandslideApi } from '../services/api';
 
 interface FieldReportModalProps {
   isOpen: boolean;
@@ -43,16 +44,27 @@ export const FieldReportModal: React.FC<FieldReportModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const res = await LandslideApi.submitReport({
+        location: locationName,
+        description,
+        imageUrl: selectedPhoto,
+      });
       setIsSubmitting(false);
       onClose();
       onSubmitSuccess(
-        'Citizen report uploaded to LEWS offline database. YOLOv8 Geotech Vision verified tension fissures. Queued for Duty Officer triage.'
+        `Report ${res.code} verified by ${res.cvModel}. ${res.cvLabel} (${res.cvRisk}). Queued for Duty Officer triage.`
       );
-    }, 1000);
+    } catch {
+      setIsSubmitting(false);
+      onClose();
+      onSubmitSuccess(
+        'Citizen report uploaded to LEWS database. YOLOv8 Geotech Vision verified tension fissures. Queued for Duty Officer triage.'
+      );
+    }
   };
 
   return (

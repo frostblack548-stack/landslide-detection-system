@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SENSOR_NODES, ASSET_URLS } from '../data/mockData';
+import { LandslideApi } from '../services/api';
 import {
   Activity,
   AlertOctagon,
@@ -28,27 +29,38 @@ export const TemporalLstmPredictor: React.FC<TemporalLstmPredictorProps> = ({
   const [selectedSensorFilter, setSelectedSensorFilter] = useState<string>('all');
 
   // Dynamic calculations based on sandbox slider
+  const [prediction, setPrediction] = useState<any>(null);
+
+  useEffect(() => {
+    let active = true;
+    LandslideApi.predictLstm(extraRainfall).then((data) => {
+      if (active) setPrediction(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [extraRainfall]);
+
   const baseFoS = 0.98;
-  const simulatedFoS = Math.max(0.68, +(baseFoS - extraRainfall * 0.005).toFixed(2));
+  const simulatedFoS = prediction?.simulated_fos ?? Math.max(0.68, +(baseFoS - extraRainfall * 0.005).toFixed(2));
   const basePwp = 284;
-  const simulatedPwp = Math.round(basePwp + extraRainfall * 1.8);
+  const simulatedPwp = prediction?.simulated_pwp ?? Math.round(basePwp + extraRainfall * 1.8);
   const baseLeadHours = 4.52; // 4h 31m
-  const simulatedLeadHours = Math.max(0.75, +(baseLeadHours - extraRainfall * 0.06).toFixed(2));
+  const simulatedLeadHours = prediction?.simulated_lead_hours ?? Math.max(0.75, +(baseLeadHours - extraRainfall * 0.06).toFixed(2));
 
   const hours = Math.floor(simulatedLeadHours);
   const minutes = Math.round((simulatedLeadHours - hours) * 60);
-  const leadTimeDisplay = `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m 12s`;
+  const leadTimeDisplay = prediction?.lead_time_display ?? `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m 12s`;
 
   // Time labels for past 24h + 6h future prediction
-  const timeLabels = ['-24h', '-18h', '-12h', '-6h', '-3h', 'NOW', '+2h', '+4h', '+6h'];
+  const timeLabels = prediction?.time_labels ?? ['-24h', '-18h', '-12h', '-6h', '-3h', 'NOW', '+2h', '+4h', '+6h'];
 
-  // Synthetic trend for Chart 1: Rainfall & PWP
-  // Values: [mm/h, kPa]
-  const baseRainTrend = [8, 14, 22, 45, 68, 85 + extraRainfall, 75 + extraRainfall, 60, 40];
-  const pwpTrend = [180, 195, 215, 245, 270, simulatedPwp, simulatedPwp + 20, simulatedPwp + 35, simulatedPwp + 42];
+  // Trend for Chart 1: Rainfall & PWP
+  const baseRainTrend = prediction?.rain_trend ?? [8, 14, 22, 45, 68, 85 + extraRainfall, 75 + extraRainfall, 60, 40];
+  const pwpTrend = prediction?.pwp_trend ?? [180, 195, 215, 245, 270, simulatedPwp, simulatedPwp + 20, simulatedPwp + 35, simulatedPwp + 42];
 
-  // Synthetic FoS trend for Chart 2
-  const fosTrend = [1.52, 1.44, 1.32, 1.18, 1.05, simulatedFoS, Math.max(0.65, simulatedFoS - 0.08), Math.max(0.6, simulatedFoS - 0.15), Math.max(0.55, simulatedFoS - 0.22)];
+  // FoS trend for Chart 2
+  const fosTrend = prediction?.fos_trend ?? [1.52, 1.44, 1.32, 1.18, 1.05, simulatedFoS, Math.max(0.65, simulatedFoS - 0.08), Math.max(0.6, simulatedFoS - 0.15), Math.max(0.55, simulatedFoS - 0.22)];
 
   const filteredSensors =
     selectedSensorFilter === 'all'
