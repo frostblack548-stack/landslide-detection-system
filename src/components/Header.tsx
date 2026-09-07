@@ -2,18 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { NerState } from '../types';
 import { ASSET_URLS } from '../data/mockData';
 import { sirenPlayer } from '../utils/audioSiren';
-import { Volume2, VolumeX, ShieldAlert, Radio, Clock, PhoneCall } from 'lucide-react';
+import { Volume2, VolumeX, ShieldAlert, Radio, Clock, PhoneCall, Sun, Moon } from 'lucide-react';
 
 interface HeaderProps {
   selectedState: NerState;
   onSelectState: (state: NerState) => void;
   onOpenQuickEvac?: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   selectedState,
   onSelectState,
   onOpenQuickEvac,
+  theme,
+  onToggleTheme,
 }) => {
   const [isSirenActive, setIsSirenActive] = useState(false);
   const [timeString, setTimeString] = useState('');
@@ -140,6 +144,30 @@ export const Header: React.FC<HeaderProps> = ({
             <Clock className="w-3.5 h-3.5 text-[#90cfec]" />
             <span className="text-[11px] text-[#d4e4fa]">{timeString || '11:46:20 IST'}</span>
           </div>
+
+          {/* Theme Toggle Button (Dark / Light) */}
+          <button
+            onClick={onToggleTheme}
+            aria-label="Toggle visual theme mode"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md border transition-all cursor-pointer shadow-sm ${
+              theme === 'light'
+                ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                : 'bg-[#122131] hover:bg-[#1c2b3c] text-[#ffb870] border-[#273647]'
+            }`}
+          >
+            {theme === 'light' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-600 animate-spin-slow" />
+                <span className="text-[11px] font-mono tracking-tight font-bold text-amber-900">LIGHT</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-[#44d8f1]" />
+                <span className="text-[11px] font-mono tracking-tight text-[#d4e4fa]">DARK</span>
+              </>
+            )}
+          </button>
 
           {/* Audio Siren Simulation Button */}
           <button

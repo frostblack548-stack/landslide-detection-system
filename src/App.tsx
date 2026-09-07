@@ -20,6 +20,24 @@ export default function App() {
   const [selectedState, setSelectedState] = useState<NerState>('all');
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [globalToast, setGlobalToast] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('lews-theme');
+      return saved === 'light' || saved === 'dark' ? saved : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('lews-theme', next);
+      } catch {}
+      return next;
+    });
+  };
 
   const triggerGlobalToast = (msg: string) => {
     setGlobalToast(msg);
@@ -27,12 +45,20 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#051424] text-[#d4e4fa] flex flex-col font-sans selection:bg-[#0d5c75] selection:text-[#93d3ef]">
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
+        theme === 'light'
+          ? 'theme-light bg-slate-50 text-slate-900 selection:bg-cyan-100 selection:text-cyan-900'
+          : 'bg-[#051424] text-[#d4e4fa] selection:bg-[#0d5c75] selection:text-[#93d3ef]'
+      }`}
+    >
       {/* Institutional Top Header */}
       <Header
         selectedState={selectedState}
         onSelectState={setSelectedState}
         onOpenQuickEvac={() => setActiveModule('emergency-broadcast-and-dispatch')}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Operational Module Navigation Tabs */}
