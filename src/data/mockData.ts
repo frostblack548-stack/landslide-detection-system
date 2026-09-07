@@ -8,36 +8,21 @@ import {
 } from '../types';
 
 export const ASSET_URLS = {
-  emblem:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuDOQGKQIit85suxMalrInJpTx5drllSQYhOUIX5p22DBmizOStOTBvxpLOAIzvEJe_94GaJRzpNDvGg8RmVtJGzXwU6PpzJVgTEOCNKy5_YzvwBE6WzQCTFOuziVXgMTBe3X2cFbij23kNu56tyTbX77BJaT_fdtN93XBmxM8sXWh-yVjxZ_kUAsZe605B2AkDdehZddqnYvy0RuL4Dw-ODBBwIAM4qNB_Z7H4eq3BwY1FK_mnS9yklrQ',
-  boreholeAlpha:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuAR8OHoewiTJN7KByZnMKoVuerGSbl-yA4L2KI1vGZaRpkhs6soWQp_6jsi8zIx5waq-MUSjwbEmQ6baW3CsstRbWegXD35SL1x-1C3YJX7UzkiW40cmZ8M2DEkojTqy4x_C5EqRBd3MfTrC-ut3RL4MVSS3Kwnhm4NgFK3iDw5NLiHI_KDmRHmae7jQc3wpMs-3T5Vkdiz76o5yTeSnEFS6VFI0dKSIfCcAt3rviYvkivUxC8v6iwkDg',
-  acousticChamphai:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuDmsH2w0JFzTJ9dHPxcVvQBSvS7aMshxg2S2B41fre14O6FS_H_x26hMUIOJjN00mrfsTUV1yAJJ3hvJBYBnKzBJzcn90GLs8PrhHmLwl1iX_86K3L4U5N4lArvT5TmVmS891aNtOqijLwAUicrrT8qAlPmV6Sz3RxNSkPFew9ADYHkibT9n1GCL7QwcPuIWV1gF9bfS517xJTMfWlC-hbXvdxVtS8c5sP5ReB_LNtS1W_n9LbKFuTQRA',
-  awsRadarNode:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuB-RBRIZmohBL-lznVFIdBMRNRboo13V6LKsWEH36wi3cdHsg8ucmdxWRSAAKKbtpYTT69IHNoupS8Zb-mliiw2oPUeABoUVzqcCJbcQB60QPGJ1CezNHbLVGxGI6cRAyvxs4G_dWYfSrZ4A_6Z2Gwlt2uD4SGFCdcTSUn5UH86b6NcWwLl14favcmkQb90J5giPSN69bXqs1l_i4zxsrGXB0AmMRnJK48rldJNQA1yQHFXNOgQxXAPoA',
-  terrainOptical:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuAGlnm8CPYHDeLy1Z0Ap6SMUdZveRrt13nFxgudGQyoxCyZCJUQ-XwVrOMpGuIX7QYTy2K8iTavqnK3EZzVjBfidB559XDvpXBNGe9DoGjO1rSlCEpTrNssZ3HI05EdGtiCm8Tq4qDehPC2aU-nFQi605_yTcahXXVt8cHARC7jXzEvGykaFyubQCATgCe0yJwqkI0x-LHIGjnlR7VV3_08sEt4zFFai60s2_6WVMJFTr9dW0_HUUFQsg',
-  primaryIncident:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCfgmZOUw0RJNRDeRn_ey0LAUAFSBdB0JYQGzipb_eWiyc-h1uSGualH0defPe8gbGXbegaDiukL0iel6AWkyGhqwL0BSjmQdsUol2ad9E0y8npvwgJykhtYJwOmGbJ3NOgIsm8kZitQiHwkRuDW1Dkq9c_HVHDUmAq9_UahiuhMl-e4ReMnP62Yc1QcBB0l7Jl10W0VogIPMNZAoUuMA4O38M_RyvqjrRcTeCXK5vXVdvEyXLEy06Xfg',
-  primaryIncidentAlt:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuALB_yXy7sUfuuBp4UTSr0dpk7zF6HUUQRZiAJn-qJVUMS3weVz4GfRqmp4iBNO7J_W-UvGD1w1jqzLtLrMilmiZRSdwlBzREvwEhFuMLj8leFOXhKsH03DPMNeH_fcNpVTQ653MQmJiL5XszrnrAcuDD86DSS_8ne0IqjZIqrayQX1OCr-uhqqUsFi3m8XhebKkygRo9VgyeB7Sl2pbZWJaj_RHq5Phd-CSxf5V3afEMDPjxRH_rBYYg',
-  sohraPass:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuAP4thIWjjxRw3jMWofgMpkNp2pjSfm-KKJKa_od2pz7dACvUdsssOkylKNYDucSrmJo7ZAMfGzKKIJLdyYyWDlzBcA-O8CIdG5Fl_dDQa46DTK-kw0SM9woMB2OddTUa5WPeBhaL-Ava5XGzgZ9xac34HMmkITL9JuPosG_DFrMz1xddi3Imykm5QUBAXOHPqI8f0kSfQEy-XYrpE2S59-20pF5YxlMUiSzXT3OalUfHXWpC9eCNe_3A',
-  jatingaRidge:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCyedVbmPCzCLZagJKJlOAuvv_Do3Gh5hdhQQ7rh5bXhWVkLAWJCkxmaI4G7dB-INUoep2LD6E10TiFq5EnT-B9VmauXigB3nzn-1aVlwXeRW6Ib2t1Kz02ahH1xMjrHj_tRs-zxy32H1mE-1yIcSG-oQd5ffMBBJkmQ4WokIblyhzJt0Fb8FdFH74Ax7qJPnmL2doqSPxcwm-FksUrnFw-eTNfi10dVuYl5tLJpdmrG_3OLlm93qnzDg',
-  tupulNoney:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuD4xnE4Uk6_MizusKRLrXmb1uTGfpjQ9WIMkIPpSjsNxpKUBPv-8ldJ5qJJHzow3EO5BoohB1GGGutmQSrGPUBsQinpnALt6lGtLm5G-h2d-wuvYImMvBiHdunen9i64MJUcTsrg02JlDoWEW_dDbr4p0U5zNH2EulRxxmnT0lNatih7qCA3GOAt7dDMZT-dEX4zQpeohpi5_3MWjwJwKjMiMQ5-GnvZflH_hBs2OSYMoT1MidSkSOdMQ',
-  gisSatelliteMap:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuDScIP4A7U9Jqmj6qTNNFfvdMqRad9iIUIrzMHtfcst3GaSKD5hMrVb87wEOXYnya_liiQ5j4nbgHuqMxu0fgpAVZOd-IqTqKUKj42X-0yMmwZyxUTK0EjeZZq94wrt9ilvuinkvzP4RKGCantvuUlCgdBOjOsRd4ZgpUMtXEpt_C57OiNDLqaTwwEeC5QKIgXd8RsoUdLW79zJKFrp6CQpnzgUinsBWBqlBSycC_mtxO3hT96WUYWHhQ',
-  evacuationCorridor:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCDkW3jZEol3oL2oPeAto-4Wu6BVYkBPSdBvyOrgfVDm6zmKmrxb6yK-nIUULa0YlZ3BU0niRmzJ2lZKoX-mIvcuVuiF4WH5g52r8NX78a-KMphBTtWdeK4ksSBYf_Nl32moSqq5VCGYITdu3YtOnpURdbXJbrBYBANA1CRfY_FGAc5FVcRBMuEu7_uyYI3ffeC8UrCQfQL0BpOoD305aAazNoGZG3vEwH0WbPDSJ8oIsN7govcL-SF3g',
-  evacuationMapRoute:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuDTZpktqXQGvkvTKTeOIx5RRi3zZatJxqSvON279ztS1mrWvzlx-blobN_janMaOFklVMuSicJidiBSNdsHC0ArxNxE4xG89ZGbad7bpu5ltG1L3ZTG7ULmD1lR4wZOBa2HSigDGdHkaWWQ1o9K5VFLehhRxUJioluZNanfBDGvKLToXZZYvBJyydQhT0kSf4JQYn7PjxJmYaATEBUCMj0dudz4zE_uyL2Es84bQ1Bxa5YlsOPu_2rtOw',
-  tacticalNdrf:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCcRwK68nOEcJB_RTbFV7NbVMBGF3r6q4aIiZdo0WZusBifu58LIhaemnbGPKdU4VI9CGINI5GU2cChYyIWX2HAyKFHUqXEIwGvuikbAX6a7HUeKV7DVnbzh_c72GKAuhy6cYKqtbXUgHAx6VFQ_CSJ9ZLCZ_gdV1hU7ZsfCfm2FwmDHnwn9iZ-IhNZxSssAF1mvssMe2pdWgYwNWsWWSFbxoXMDrfdUVynP-uyFe_VIfFhuWoNhXiRFQ',
-  broExcavator:
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuAKO5hwPrhqzR62gNhvNpUiol9vyTR_VsSeo4kKzoj40fv4EWeU9x8QwpB5JRUOwt60wEXjYHLQNlN-fRCZvDZgFC0ZyYfEp7QUe0K2nNS1tOCSgkcuH2KVZDkrgA13QfprjLVhkv3q4FHNSMuyRE9-1xskXrK98lh8GqKQtxF5mc-_jzX09y7mLfuXEQaJIsSQm5jS38NUfLCeWSXRwgLrsWa7dq6UWXPNd8BylGHdp40Q_I8IHt89fQ',
+  emblem: '/assets/emblem.png',
+  boreholeAlpha: '/assets/boreholeAlpha.png',
+  acousticChamphai: '/assets/acousticChamphai.png',
+  awsRadarNode: '/assets/awsRadarNode.png',
+  terrainOptical: '/assets/terrainOptical.png',
+  primaryIncident: '/assets/primaryIncident.png',
+  primaryIncidentAlt: '/assets/primaryIncidentAlt.png',
+  sohraPass: '/assets/sohraPass.png',
+  jatingaRidge: '/assets/jatingaRidge.png',
+  tupulNoney: '/assets/tupulNoney.png',
+  gisSatelliteMap: '/assets/gisSatelliteMap.png',
+  evacuationCorridor: '/assets/evacuationCorridor.png',
+  evacuationMapRoute: '/assets/evacuationMapRoute.png',
+  tacticalNdrf: '/assets/tacticalNdrf.png',
+  broExcavator: '/assets/broExcavator.png',
 };
 
 export const HAZARD_ZONES: HazardZone[] = [
