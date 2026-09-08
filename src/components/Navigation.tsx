@@ -1,112 +1,152 @@
 import React from 'react';
 import { OperationalModule } from '../types';
-import { Map, Activity, Camera, BellRing, ChevronRight, Cpu } from 'lucide-react';
+import {
+  Home,
+  LayoutDashboard,
+  Map,
+  BarChart2,
+  Bell,
+  AlertOctagon,
+  Cpu,
+  Info,
+} from 'lucide-react';
 
 interface NavigationProps {
   activeModule: OperationalModule;
   onChangeModule: (module: OperationalModule) => void;
   reportCount?: number;
+  theme?: 'dark' | 'light';
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeModule,
   onChangeModule,
   reportCount = 12,
+  theme = 'dark',
 }) => {
-  const modules = [
+  const isDark = theme === 'dark';
+
+  const primaryModules: {
+    id: OperationalModule;
+    title: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+    badgeColor?: string;
+  }[] = [
     {
-      id: 'spatial-gis-command' as OperationalModule,
-      title: 'Spatial GIS Command',
-      shortTitle: 'GIS Map',
-      tag: 'GEO-MESH',
+      id: 'home',
+      title: 'Home',
+      icon: Home,
+    },
+    {
+      id: 'dashboard',
+      title: 'Dashboard',
+      icon: LayoutDashboard,
+      badge: 'Live',
+      badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+    },
+    {
+      id: 'risk-map',
+      title: 'Risk Map',
       icon: Map,
-      badge: 'Live Vector',
-      badgeColor: 'text-[#44d8f1] bg-[#00363e]/60 border-[#00bcd4]/30',
+      badge: 'GIS 3D',
+      badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
     },
     {
-      id: 'temporal-lstm-predictor' as OperationalModule,
-      title: 'Temporal LSTM Predictor',
-      shortTitle: 'AI Predictor',
-      tag: 'FoS 0.98 CRITICAL',
-      icon: Activity,
-      badge: 'Lead: 04h 31m',
-      badgeColor: 'text-[#ffb4ab] bg-[#93000a]/40 border-[#ffb4ab]/30 animate-pulse',
+      id: 'risk-details',
+      title: 'Risk Details',
+      icon: BarChart2,
+      badge: 'Analytics',
+      badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
     },
     {
-      id: 'ml-models-pipeline' as OperationalModule,
-      title: 'ML Models & Pipeline',
-      shortTitle: 'ML Models',
-      tag: 'RF ROC-AUC 0.896',
+      id: 'alerts',
+      title: 'Alerts',
+      icon: Bell,
+      badge: '4 High',
+      badgeColor: 'text-red-400 bg-red-500/15 border-red-500/30 animate-pulse',
+    },
+    {
+      id: 'emergency-sos',
+      title: 'Emergency SOS',
+      icon: AlertOctagon,
+      badge: '24x7',
+      badgeColor: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
+    },
+    {
+      id: 'about',
+      title: 'About & ML',
       icon: Cpu,
-      badge: '19 Datasets',
-      badgeColor: 'text-[#53e8a6] bg-[#003822]/50 border-[#53e8a6]/30',
-    },
-    {
-      id: 'crowdsource-cv-verification' as OperationalModule,
-      title: 'Crowdsource CV Verification',
-      shortTitle: 'Crowd CV',
-      tag: 'YOLOv8 + Bhashini',
-      icon: Camera,
-      badge: `${reportCount} Pending`,
-      badgeColor: 'text-[#ffb870] bg-[#7d4800]/40 border-[#ffb870]/30',
-    },
-    {
-      id: 'emergency-broadcast-and-dispatch' as OperationalModule,
-      title: 'Emergency Broadcast & Dispatch',
-      shortTitle: 'CAP Alert',
-      tag: 'CAP SMS • SDMA',
-      icon: BellRing,
-      badge: '7 Lang Matrix',
-      badgeColor: 'text-[#90cfec] bg-[#0d5c75]/50 border-[#90cfec]/30',
     },
   ];
 
   return (
-    <nav className="bg-[#0d1c2d] border-b border-[#1c2b3c] sticky top-[73px] z-40">
+    <nav
+      className={`border-b sticky top-[73px] z-40 transition-colors duration-200 ${
+        isDark
+          ? 'bg-[#0a121e]/95 backdrop-blur-md border-slate-800'
+          : 'bg-white/95 backdrop-blur-md border-slate-200 shadow-sm'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between overflow-x-auto no-scrollbar py-1.5 gap-1.5 sm:gap-2">
-          {modules.map((m) => {
-            const Icon = m.icon;
-            const isActive = activeModule === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => onChangeModule(m.id)}
-                className={`flex-shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all relative cursor-pointer ${
-                  isActive
-                    ? 'bg-[#1c2b3c] text-white border border-[#44d8f1]/40 shadow-sm shadow-cyan-950/50'
-                    : 'text-[#bfc8cd] hover:text-white hover:bg-[#122131] border border-transparent'
-                }`}
-              >
-                <Icon
-                  className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                    isActive ? 'text-[#44d8f1] scale-110' : 'text-[#8a9297]'
+        <div className="flex items-center justify-between overflow-x-auto no-scrollbar py-2 gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {primaryModules.map((m) => {
+              const Icon = m.icon;
+              // Map legacy IDs to canonical nav items
+              const isActive =
+                activeModule === m.id ||
+                (m.id === 'risk-map' && activeModule === 'spatial-gis-command') ||
+                (m.id === 'alerts' && activeModule === 'emergency-broadcast-and-dispatch') ||
+                (m.id === 'about' &&
+                  (activeModule === 'ml-models-pipeline' ||
+                    activeModule === 'temporal-lstm-predictor' ||
+                    activeModule === 'crowdsource-cv-verification'));
+
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => onChangeModule(m.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap border ${
+                    isActive
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                      : isDark
+                      ? 'bg-slate-900/60 hover:bg-slate-800 text-slate-300 border-slate-800 hover:border-slate-700'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                   }`}
-                />
-                <div className="flex flex-col items-start leading-tight">
-                  <span className="font-semibold whitespace-nowrap hidden sm:inline">
-                    {m.title}
-                  </span>
-                  <span className="font-semibold whitespace-nowrap sm:hidden">
-                    {m.shortTitle}
-                  </span>
-                  <span className="text-[10px] text-[#8a9297] font-mono whitespace-nowrap hidden md:inline">
-                    {m.tag}
-                  </span>
-                </div>
-
-                <span
-                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded border whitespace-nowrap ml-1 ${m.badgeColor}`}
                 >
-                  {m.badge}
-                </span>
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-500'}`} />
+                  <span>{m.title}</span>
 
-                {isActive && (
-                  <div className="absolute -bottom-1.5 left-1/2 transform -translate-x-1/2 w-8 h-[2px] bg-[#44d8f1] rounded-full" />
-                )}
-              </button>
-            );
-          })}
+                  {m.badge && (
+                    <span
+                      className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full border ${
+                        isActive ? 'bg-white/20 text-white border-white/30' : m.badgeColor
+                      }`}
+                    >
+                      {m.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick Launcher for ML Sandbox */}
+          <div className="hidden lg:flex items-center gap-2 border-l pl-3 border-slate-700 dark:border-slate-800">
+            <button
+              onClick={() => onChangeModule('ml-models-pipeline')}
+              className={`text-xs px-2.5 py-1.5 rounded-lg border font-mono transition-all ${
+                activeModule === 'ml-models-pipeline'
+                  ? 'bg-purple-600 text-white border-purple-500'
+                  : isDark
+                  ? 'bg-slate-800 text-purple-300 border-slate-700 hover:border-purple-500/50'
+                  : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+              }`}
+            >
+              ML Sandbox (19 Datasets)
+            </button>
+          </div>
         </div>
       </div>
     </nav>

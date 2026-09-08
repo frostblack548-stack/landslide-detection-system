@@ -1,4 +1,11 @@
 export type OperationalModule =
+  | 'home'
+  | 'dashboard'
+  | 'risk-map'
+  | 'risk-details'
+  | 'alerts'
+  | 'emergency-sos'
+  | 'about'
   | 'spatial-gis-command'
   | 'temporal-lstm-predictor'
   | 'crowdsource-cv-verification'
@@ -270,5 +277,21 @@ export interface MlHeatmapResponse {
   extra_rainfall_applied: number;
   points: MlHeatmapPoint[];
 }
+
+export interface MonthlyMetricComparison {
+  month: string;
+  historicalAvg: number;
+  current: number;
+}
+
+export interface HelplineEntry {
+  id: string;
+  name: string;
+  category: 'government' | 'local' | 'medical' | 'rescue';
+  number: string;
+  state?: string;
+  icon?: string;
+}
+
 
 
