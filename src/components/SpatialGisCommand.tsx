@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   HazardZone,
   SensorNode,
@@ -128,7 +128,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     return () => {
       active = false;
     };
-  }, [selectedState, propSelectedZone]);
+  }, [selectedState]);
 
   // Live ML evaluation for the selected zone
   useEffect(() => {
@@ -159,30 +159,38 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
   }, [selectedState, stressRainfall]);
 
   // Filter hazard zones according to state, search query, and risk level toggles
-  const filteredZones = zones.filter((z) => {
-    if (selectedState !== 'all' && z.state !== selectedState) return false;
-    if (!riskFilters.high && z.riskStatus.includes('CRITICAL')) return false;
-    if (!riskFilters.moderate && z.riskStatus.includes('ADVISORY')) return false;
-    if (!riskFilters.low && z.riskStatus.includes('NOMINAL')) return false;
-    if (
-      searchQuery.trim() !== '' &&
-      !z.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !z.corridor.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !z.state.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredZones = useMemo(
+    () =>
+      zones.filter((z) => {
+        if (selectedState !== 'all' && z.state !== selectedState) return false;
+        if (!riskFilters.high && z.riskStatus.includes('CRITICAL')) return false;
+        if (!riskFilters.moderate && z.riskStatus.includes('ADVISORY')) return false;
+        if (!riskFilters.low && z.riskStatus.includes('NOMINAL')) return false;
+        if (
+          normalizedSearchQuery !== '' &&
+          !z.name.toLowerCase().includes(normalizedSearchQuery) &&
+          !z.corridor.toLowerCase().includes(normalizedSearchQuery) &&
+          !z.state.toLowerCase().includes(normalizedSearchQuery)
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [zones, selectedState, riskFilters, normalizedSearchQuery]
+  );
 
   // Filter sensors
-  const filteredSensors =
-    selectedState === 'all'
-      ? sensors
-      : sensors.filter((s) => s.state === selectedState);
+  const filteredSensors = useMemo(
+    () => (selectedState === 'all' ? sensors : sensors.filter((s) => s.state === selectedState)),
+    [sensors, selectedState]
+  );
 
   // Filter historical events based on pastEvents checkbox
-  const visibleTrainingEvents = riskFilters.pastEvents ? trainingEvents : [];
+  const visibleTrainingEvents = useMemo(
+    () => (riskFilters.pastEvents ? trainingEvents : []),
+    [riskFilters.pastEvents, trainingEvents]
+  );
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

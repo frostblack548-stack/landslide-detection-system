@@ -17,10 +17,10 @@ import {
   Globe,
   Mountain,
   Satellite,
-  ExternalLink,
   RotateCw,
   Sparkles,
 } from 'lucide-react';
+import { ThreeDMapView } from './ThreeDMapView';
 
 export type GoogleEarthBasemap = 'satellite' | 'hybrid' | 'terrain' | '3d_earth';
 
@@ -92,6 +92,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   const [showSettingsPanel, setShowSettingsPanel] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [currentZoom, setCurrentZoom] = useState<number>(9);
+  const [is3DViewOpen, setIs3DViewOpen] = useState<boolean>(false);
 
   // Google Earth tile URLs (high-speed Google tile servers)
   const tileConfigs = useMemo(() => ({
@@ -270,7 +271,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
 
       marker.addTo(group);
     });
-  }, [zones, selectedZone, zoneMlRisk, activeLayers.mlInference]);
+  }, [zones, selectedZone.id, zoneMlRisk, activeLayers.mlInference]);
 
   // Render Historical Ground Truth Events
   useEffect(() => {
@@ -377,6 +378,8 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
       return;
     }
 
+    let renderTimeout: ReturnType<typeof setTimeout> | null = null;
+
     const renderHeatmap = () => {
       const size = map.getSize();
       if (canvas.width !== size.x || canvas.height !== size.y) {
@@ -386,10 +389,11 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Create an offscreen alpha canvas to accumulate radial density
+      // Render the expensive density pass at half resolution, then upscale it.
+      const renderScale = 0.5;
       const offCanvas = document.createElement('canvas');
-      offCanvas.width = size.x;
-      offCanvas.height = size.y;
+      offCanvas.width = Math.max(1, Math.ceil(size.x * renderScale));
+      offCanvas.height = Math.max(1, Math.ceil(size.y * renderScale));
       const offCtx = offCanvas.getContext('2d');
       if (!offCtx) return;
 
@@ -405,9 +409,12 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
           return;
         }
 
+        screenPoint.x *= renderScale;
+        screenPoint.y *= renderScale;
+
         // Stress boost applied to weight
         const adjustedWeight = Math.min(1.0, pt.weight * (1 + (stressRainfall / 120) * 0.25));
-        const radius = heatmapRadius * (0.8 + adjustedWeight * 0.6);
+        const radius = heatmapRadius * (0.8 + adjustedWeight * 0.6) * renderScale;
 
         const radial = offCtx.createRadialGradient(
           screenPoint.x,
@@ -472,34 +479,36 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
         }
       }
 
-      ctx.putImageData(imgData, 0, 0);
+      offCtx.putImageData(imgData, 0, 0);
+      ctx.drawImage(offCanvas, 0, 0, size.x, size.y);
+    };
+
+    const scheduleHeatmapRender = () => {
+      if (renderTimeout !== null) return;
+
+      renderTimeout = setTimeout(() => {
+        renderTimeout = null;
+        renderHeatmap();
+      }, 60);
     };
 
     renderHeatmap();
 
-    map.on('move', renderHeatmap);
-    map.on('moveend', renderHeatmap);
-    map.on('zoom', renderHeatmap);
-    map.on('zoomend', renderHeatmap);
-    map.on('resize', renderHeatmap);
+    map.on('move', scheduleHeatmapRender);
+    map.on('moveend', scheduleHeatmapRender);
+    map.on('zoom', scheduleHeatmapRender);
+    map.on('zoomend', scheduleHeatmapRender);
+    map.on('resize', scheduleHeatmapRender);
 
     return () => {
-      map.off('move', renderHeatmap);
-      map.off('moveend', renderHeatmap);
-      map.off('zoom', renderHeatmap);
-      map.off('zoomend', renderHeatmap);
-      map.off('resize', renderHeatmap);
+      if (renderTimeout !== null) clearTimeout(renderTimeout);
+      map.off('move', scheduleHeatmapRender);
+      map.off('moveend', scheduleHeatmapRender);
+      map.off('zoom', scheduleHeatmapRender);
+      map.off('zoomend', scheduleHeatmapRender);
+      map.off('resize', scheduleHeatmapRender);
     };
   }, [heatmapPoints, activeLayers.mlHeatmap, heatmapRadius, heatmapOpacity, stressRainfall]);
-
-  // Google Earth 3D URL for the selected zone
-  const googleEarth3dUrl = useMemo(() => {
-    const lat = activeZoneCoords[0];
-    const lon = activeZoneCoords[1];
-    const alt = parseInt(selectedZone.elevation.replace(/\D/g, '') || '1480');
-    // Centered at altitude, looking at 65° tilt with 3000m range
-    return `https://earth.google.com/web/@${lat},${lon},${alt}a,3200d,35y,35h,65t,0r`;
-  }, [activeZoneCoords, selectedZone.elevation]);
 
   return (
     <div
@@ -507,63 +516,22 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'h-[440px] sm:h-[500px]'
       }`}
     >
-      {/* 2D Leaflet Map or Google Earth 3D View */}
-      {basemap === '3d_earth' ? (
-        <div className="relative w-full h-full bg-[#051424] flex flex-col items-center justify-center">
-          <iframe
-            src={googleEarth3dUrl}
-            title="Google Earth 3D Photorealistic View"
-            className="w-full h-full border-none"
-            allow="fullscreen; geolocation"
-          />
+      {/* Main Leaflet GIS Map Container */}
+      <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-          {/* 3D Mode HUD Controls */}
-          <div className="absolute top-3 left-3 bg-[#051424]/90 border border-cyan-500/50 backdrop-blur-md rounded-lg p-3 text-xs shadow-2xl z-20 max-w-sm">
-            <div className="flex items-center gap-2 pb-1.5 border-b border-[#1c2b3c]">
-              <Globe className="w-4 h-4 text-cyan-400 animate-spin" />
-              <span className="font-bold text-white font-mono uppercase tracking-wider">
-                Google Earth 3D Photorealistic Mode
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-300 mt-1.5 font-sans">
-              Inspecting 3D terrain topography, elevation contours, and cliff faces for{' '}
-              <b className="text-cyan-300">{selectedZone.name}</b>.
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400">
-              <div>GPS: <span className="text-white">{selectedZone.coords}</span></div>
-              <div>Camera Tilt: <span className="text-amber-300">65° Oblique</span></div>
-            </div>
-            <div className="mt-2.5 flex items-center gap-2">
-              <a
-                href={googleEarth3dUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 py-1 px-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[10px] font-mono flex items-center justify-center gap-1 font-bold shadow transition-all"
-              >
-                <span>Full WebGL Earth</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-              <button
-                onClick={() => setBasemap('hybrid')}
-                className="py-1 px-2 bg-[#122131] hover:bg-[#1c2b3c] text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-mono transition-all cursor-pointer"
-              >
-                Exit 3D Mode
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Main Leaflet GIS Map Container */}
-          <div ref={mapContainerRef} className="w-full h-full z-0" />
+      {/* Transparent Canvas Overlay for ML Pattern Heatmap */}
+      <canvas
+        ref={canvasOverlayRef}
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{ width: '100%', height: '100%' }}
+      />
 
-          {/* Transparent Canvas Overlay for ML Pattern Heatmap */}
-          <canvas
-            ref={canvasOverlayRef}
-            className="absolute inset-0 pointer-events-none z-10"
-            style={{ width: '100%', height: '100%' }}
-          />
-        </>
+      {is3DViewOpen && (
+        <ThreeDMapView
+          selectedZone={selectedZone}
+          zones={zones}
+          onClose={() => setIs3DViewOpen(false)}
+        />
       )}
 
       {/* Top Left: Basemap Switcher Selector (Google Earth Satellite, Hybrid, Terrain, 3D) */}
@@ -608,7 +576,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
         </button>
 
         <button
-          onClick={() => setBasemap('3d_earth')}
+          onClick={() => setIs3DViewOpen(true)}
           className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
             basemap === '3d_earth'
               ? 'bg-amber-400 text-slate-950 shadow ring-2 ring-amber-300'

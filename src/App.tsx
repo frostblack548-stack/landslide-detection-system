@@ -3,27 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { OperationalModule, NerState, HazardZone } from './types';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { TerraHome } from './components/TerraHome';
-import { TerraDashboard } from './components/TerraDashboard';
-import { TerraRiskDetails } from './components/TerraRiskDetails';
-import { TerraAlerts } from './components/TerraAlerts';
-import { TerraEmergencySos } from './components/TerraEmergencySos';
-import { TerraAbout } from './components/TerraAbout';
-import { SpatialGisCommand } from './components/SpatialGisCommand';
-import { TemporalLstmPredictor } from './components/TemporalLstmPredictor';
-import { CrowdsourceCvVerification } from './components/CrowdsourceCvVerification';
-import { BroadcastAndDispatch } from './components/BroadcastAndDispatch';
 import { FieldReportModal } from './components/FieldReportModal';
-import { MlPipelineCommand } from './components/MlPipelineCommand';
-import { LandslideRiskSimulator } from './components/LandslideRiskSimulator';
 import { sirenPlayer } from './utils/audioSiren';
 import { HAZARD_ZONES, ASSET_URLS } from './data/mockData';
 import { LandslideApi } from './services/api';
 import { PlusCircle, VolumeX, Zap } from 'lucide-react';
+
+const TerraDashboard = lazy(() => import('./components/TerraDashboard').then((module) => ({ default: module.TerraDashboard })));
+const TerraRiskDetails = lazy(() => import('./components/TerraRiskDetails').then((module) => ({ default: module.TerraRiskDetails })));
+const TerraAlerts = lazy(() => import('./components/TerraAlerts').then((module) => ({ default: module.TerraAlerts })));
+const TerraEmergencySos = lazy(() => import('./components/TerraEmergencySos').then((module) => ({ default: module.TerraEmergencySos })));
+const TerraAbout = lazy(() => import('./components/TerraAbout').then((module) => ({ default: module.TerraAbout })));
+const SpatialGisCommand = lazy(() => import('./components/SpatialGisCommand').then((module) => ({ default: module.SpatialGisCommand })));
+const TemporalLstmPredictor = lazy(() => import('./components/TemporalLstmPredictor').then((module) => ({ default: module.TemporalLstmPredictor })));
+const CrowdsourceCvVerification = lazy(() => import('./components/CrowdsourceCvVerification').then((module) => ({ default: module.CrowdsourceCvVerification })));
+const BroadcastAndDispatch = lazy(() => import('./components/BroadcastAndDispatch').then((module) => ({ default: module.BroadcastAndDispatch })));
+const MlPipelineCommand = lazy(() => import('./components/MlPipelineCommand').then((module) => ({ default: module.MlPipelineCommand })));
+const LandslideRiskSimulator = lazy(() => import('./components/LandslideRiskSimulator'));
+
+const ModuleLoadingFallback = () => (
+  <div className="flex min-h-[240px] items-center justify-center text-xs font-mono text-slate-400">
+    Loading operational module...
+  </div>
+);
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<OperationalModule>('home');
@@ -114,11 +121,16 @@ export default function App() {
 
       {/* Main Operational Screen Views */}
       <main className="flex-1 w-full">
+        <Suspense fallback={<ModuleLoadingFallback />}>
         {/* Screen 1: Home Landing Page */}
         {activeModule === 'home' && (
           <TerraHome
             zones={zones}
-            onSelectZone={setSelectedZone}
+            selectedZone={selectedZone}
+            onCheckLocationRisk={(zone) => {
+              setSelectedZone(zone);
+              setActiveModule('risk-map');
+            }}
             onNavigate={setActiveModule}
             theme={theme}
           />
@@ -249,6 +261,7 @@ export default function App() {
             />
           </div>
         )}
+        </Suspense>
       </main>
 
       {/* Floating Action Button: Citizen Field Report Upload */}
