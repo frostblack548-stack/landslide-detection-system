@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.config import ALLOWED_ORIGINS, UPLOAD_DIR
 from backend.database.database import engine, Base
 from backend.database.seeds import seed_database
-from backend.routers import susceptibility, predict, reports, sensors, alerts, weather
+from backend.routers import susceptibility, predict, reports, sensors, alerts, weather, ml_model
 
 # Initialize database schema & seed initial state
 Base.metadata.create_all(bind=engine)
@@ -45,6 +45,11 @@ app.add_middleware(
 if os.path.exists(UPLOAD_DIR):
     app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
+# Serve ML evaluation figures (Confusion Matrix, ROC Curve)
+ML_FIGURES_DIR = Path(__file__).resolve().parent.parent / "ml" / "outputs" / "figures"
+if ML_FIGURES_DIR.exists():
+    app.mount("/ml-figures", StaticFiles(directory=str(ML_FIGURES_DIR)), name="ml-figures")
+
 # Mount API Routers
 app.include_router(susceptibility.router)
 app.include_router(predict.router)
@@ -52,6 +57,16 @@ app.include_router(reports.router)
 app.include_router(sensors.router)
 app.include_router(alerts.router)
 app.include_router(weather.router)
+app.include_router(ml_model.router)
+
+# Also expose direct /predict and /model-info aliases for seamless compatibility with landslide-ai API
+@app.post("/predict")
+def predict_alias(data: ml_model.LandslidePredictionInput):
+    return ml_model.predict_landslide(data)
+
+@app.get("/model-info")
+def model_info_alias():
+    return ml_model.get_model_info()
 
 @app.get("/")
 def root():
@@ -64,6 +79,10 @@ def root():
         "endpoints": {
             "zones": "/api/zones",
             "predict_lstm": "/api/predict/lstm",
+            "predict_ml": "/api/ml/predict",
+            "ml_metrics": "/api/ml/metrics",
+            "ml_comparison": "/api/ml/comparison",
+            "ml_datasets": "/api/ml/datasets",
             "crowdsource_reports": "/api/reports",
             "sensors": "/api/sensors",
             "alerts": "/api/alerts/cap"

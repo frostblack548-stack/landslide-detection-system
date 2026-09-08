@@ -106,6 +106,52 @@ def test_sms_broadcast():
     assert data["status"] == "delivered"
     print(f"[PASS] Emergency SMS Broadcast gateway passed: {data['gateway']}")
 
+def test_ml_predict():
+    payload = {
+        "elevation": 1450.0,
+        "slope": 38.0,
+        "aspect": 190.0,
+        "soil_id": "4276.0",
+        "landcover_class": "50.0",
+        "rainfall_1d": 65.0,
+        "rainfall_3d": 120.0,
+        "rainfall_7d": 195.0,
+        "rainfall_15d": 260.0,
+        "rainfall_30d": 380.0
+    }
+    response = client.post("/api/ml/predict", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "prediction" in data
+    assert "landslide_probability" in data
+    assert "risk_level" in data
+    print(f"[PASS] ML Pipeline Inference passed: {data['prediction_label']} ({data['probability_percentage']}% Prob, {data['risk_level']})")
+
+def test_ml_metrics():
+    response = client.get("/api/ml/metrics")
+    assert response.status_code == 200
+    data = response.json()
+    assert "roc_auc" in data
+    assert "accuracy" in data
+    print(f"[PASS] ML Pipeline Metrics passed: ROC-AUC {round(data['roc_auc'], 3)}, Accuracy {round(data['accuracy'], 3)}")
+
+def test_ml_comparison():
+    response = client.get("/api/ml/comparison")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 2
+    models = [m["model"] for m in data]
+    assert "Random Forest" in models
+    assert "Logistic Regression" in models
+    print(f"[PASS] ML Model Comparison passed: {len(data)} models evaluated")
+
+def test_ml_datasets():
+    response = client.get("/api/ml/datasets")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 15
+    print(f"[PASS] Landslide Datasets Inventory passed: {len(data)} datasets integrated")
+
 if __name__ == "__main__":
     print("\nRunning LandslideGuard Backend API Tests...\n")
     test_health()
@@ -118,4 +164,8 @@ if __name__ == "__main__":
     test_cap_alert()
     test_live_weather()
     test_sms_broadcast()
-    print("\nAll 10 Backend API tests passed successfully!\n")
+    test_ml_predict()
+    test_ml_metrics()
+    test_ml_comparison()
+    test_ml_datasets()
+    print("\nAll 14 Backend API tests passed successfully!\n")
