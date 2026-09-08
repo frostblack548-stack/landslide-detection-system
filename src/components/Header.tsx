@@ -40,9 +40,12 @@ export const Header: React.FC<HeaderProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    return sirenPlayer.subscribe((playing) => setIsSirenActive(playing));
+  }, []);
+
   const handleToggleSiren = () => {
-    const active = sirenPlayer.toggle();
-    setIsSirenActive(active);
+    sirenPlayer.toggle();
   };
 
   return (

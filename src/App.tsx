@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OperationalModule, NerState } from './types';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
@@ -13,14 +13,16 @@ import { CrowdsourceCvVerification } from './components/CrowdsourceCvVerificatio
 import { BroadcastAndDispatch } from './components/BroadcastAndDispatch';
 import { FieldReportModal } from './components/FieldReportModal';
 import { MlPipelineCommand } from './components/MlPipelineCommand';
+import { sirenPlayer } from './utils/audioSiren';
 import { ASSET_URLS } from './data/mockData';
-import { PlusCircle, Shield, AlertTriangle, Radio, Phone, Zap } from 'lucide-react';
+import { PlusCircle, Shield, AlertTriangle, Radio, Phone, Zap, VolumeX } from 'lucide-react';
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<OperationalModule>('spatial-gis-command');
   const [selectedState, setSelectedState] = useState<NerState>('all');
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [globalToast, setGlobalToast] = useState<string | null>(null);
+  const [isSirenActive, setIsSirenActive] = useState<boolean>(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       const saved = localStorage.getItem('lews-theme');
@@ -44,6 +46,21 @@ export default function App() {
     setGlobalToast(msg);
     setTimeout(() => setGlobalToast(null), 4000);
   };
+
+  useEffect(() => {
+    return sirenPlayer.subscribe(setIsSirenActive);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isSirenActive) {
+        sirenPlayer.stop();
+        triggerGlobalToast('Acoustic Siren Silenced (ESC pressed)');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSirenActive]);
 
   return (
     <div
@@ -120,6 +137,25 @@ export default function App() {
           <span className="font-mono">SUBMIT FIELD REPORT</span>
         </button>
       </div>
+
+      {/* Active Siren Emergency Silence Bar */}
+      {isSirenActive && (
+        <div className="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 bg-[#93000a] text-white border-2 border-red-400 px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-3 animate-pulse">
+          <VolumeX className="w-5 h-5 text-amber-300 animate-bounce" />
+          <span className="font-mono text-xs sm:text-sm font-bold tracking-wide">
+            ACOUSTIC SIREN ACTIVE (130 dB)
+          </span>
+          <button
+            onClick={() => {
+              sirenPlayer.stop();
+              triggerGlobalToast('Acoustic Siren Silenced');
+            }}
+            className="bg-white hover:bg-slate-100 text-[#93000a] font-mono font-black text-xs px-3 py-1 rounded-full shadow cursor-pointer transition-all uppercase tracking-tight"
+          >
+            Mute / Turn Off (Esc)
+          </button>
+        </div>
+      )}
 
       {/* Global Toast Alert */}
       {globalToast && (

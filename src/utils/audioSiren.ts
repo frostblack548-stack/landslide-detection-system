@@ -1,3 +1,5 @@
+type SirenListener = (isPlaying: boolean) => void;
+
 class AudioSirenPlayer {
   private ctx: AudioContext | null = null;
   private osc: OscillatorNode | null = null;
@@ -5,6 +7,24 @@ class AudioSirenPlayer {
   private lfo: OscillatorNode | null = null;
   private lfoGain: GainNode | null = null;
   private isPlaying = false;
+  private listeners: Set<SirenListener> = new Set();
+  private autoStopTimer: number | null = null;
+
+  public subscribe(listener: SirenListener): () => void {
+    this.listeners.add(listener);
+    listener(this.isPlaying);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notify() {
+    this.listeners.forEach((l) => {
+      try {
+        l(this.isPlaying);
+      } catch {}
+    });
+  }
 
   public toggle(): boolean {
     if (this.isPlaying) {
@@ -23,7 +43,9 @@ class AudioSirenPlayer {
   public start() {
     try {
       if (this.isPlaying) return;
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AudioCtx();
 
       // Master gain
@@ -51,14 +73,28 @@ class AudioSirenPlayer {
       this.lfo.start();
       this.osc.start();
       this.isPlaying = true;
+      this.notify();
+
+      // Auto shutoff after 45 seconds to prevent runaway noise
+      if (this.autoStopTimer) clearTimeout(this.autoStopTimer);
+      this.autoStopTimer = window.setTimeout(() => {
+        if (this.isPlaying) {
+          this.stop();
+        }
+      }, 45000);
     } catch {
       // Audio context might be restricted before user gesture
       this.isPlaying = false;
+      this.notify();
     }
   }
 
   public stop() {
     try {
+      if (this.autoStopTimer) {
+        clearTimeout(this.autoStopTimer);
+        this.autoStopTimer = null;
+      }
       if (this.osc) {
         this.osc.stop();
         this.osc.disconnect();
@@ -77,6 +113,7 @@ class AudioSirenPlayer {
       this.lfo = null;
       this.ctx = null;
       this.isPlaying = false;
+      this.notify();
     }
   }
 }

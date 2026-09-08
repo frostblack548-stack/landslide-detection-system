@@ -26,6 +26,7 @@ import {
   Compass,
   FileText,
   Volume2,
+  VolumeX,
   Zap,
 } from 'lucide-react';
 
@@ -43,6 +44,11 @@ export const BroadcastAndDispatch: React.FC<BroadcastAndDispatchProps> = ({
   const [tacticalUnits, setTacticalUnits] = useState<TacticalUnit[]>(TACTICAL_UNITS);
   const [reliefShelters, setReliefShelters] = useState<ReliefShelter[]>(RELIEF_SHELTERS);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSirenActive, setIsSirenActive] = useState<boolean>(false);
+
+  useEffect(() => {
+    return sirenPlayer.subscribe(setIsSirenActive);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -154,6 +160,20 @@ export const BroadcastAndDispatch: React.FC<BroadcastAndDispatchProps> = ({
               <Send className="w-4 h-4" />
               <span>EXECUTE CAP BROADCAST</span>
             </button>
+
+            {isSirenActive && (
+              <button
+                onClick={() => {
+                  sirenPlayer.stop();
+                  showToast('Emergency Acoustic Siren silenced.');
+                }}
+                className="px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-lg shadow-amber-950/60 animate-pulse transition-all cursor-pointer"
+                title="Silence Active Acoustic Siren"
+              >
+                <VolumeX className="w-4 h-4" />
+                <span>SILENCE SIREN</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
