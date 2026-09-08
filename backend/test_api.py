@@ -122,6 +122,11 @@ def test_ml_predict():
         "rainfall_30d": 380.0
     }
     # Test both /api/ml/predict and /predict alias
+    response = client.post("/api/ml/predict", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "prediction" in data
+
     res_alias = client.post("/predict", json=payload)
     assert res_alias.status_code == 200
     assert "prediction" in res_alias.json()
