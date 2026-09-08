@@ -19,6 +19,7 @@ import { CrowdsourceCvVerification } from './components/CrowdsourceCvVerificatio
 import { BroadcastAndDispatch } from './components/BroadcastAndDispatch';
 import { FieldReportModal } from './components/FieldReportModal';
 import { MlPipelineCommand } from './components/MlPipelineCommand';
+import { LandslideRiskSimulator } from './components/LandslideRiskSimulator';
 import { sirenPlayer } from './utils/audioSiren';
 import { HAZARD_ZONES, ASSET_URLS } from './data/mockData';
 import { LandslideApi } from './services/api';
@@ -231,6 +232,21 @@ export default function App() {
         {activeModule === 'ml-models-pipeline' && (
           <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 pb-12">
             <MlPipelineCommand />
+          </div>
+        )}
+
+        {/* Feature: Real Landslide Risk Prediction Simulator */}
+        {activeModule === 'risk-simulator' && (
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 pb-12">
+            <LandslideRiskSimulator
+              theme={theme}
+              onNavigateToMap={() => setActiveModule('risk-map')}
+              onResultGenerated={(res) => {
+                triggerGlobalToast(
+                  `Real ML Simulation: ${res.prediction_label} (${(res.landslide_probability * 100).toFixed(1)}% probability, Risk: ${res.risk_level})`
+                );
+              }}
+            />
           </div>
         )}
       </main>
