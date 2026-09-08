@@ -33,10 +33,10 @@ print("=" * 70)
 
 # Project root:
 # LandslideGuard/
-# ├── data/
-# └── ml/
-#     ├── prepare_dataset.py
-#     └── outputs/
+# ??? data/
+# ??? ml/
+#     ??? prepare_dataset.py
+#     ??? outputs/
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -97,7 +97,7 @@ if not INPUT_FILE.exists():
         f"\nDataset not found:\n{INPUT_FILE}"
     )
 
-print("✓ Dataset found")
+print("[OK] Dataset found")
 
 print(f"\nInput:")
 print(INPUT_FILE)
@@ -115,7 +115,7 @@ print("=" * 70)
 df = pd.read_csv(INPUT_FILE)
 
 
-print(f"\n✓ Dataset loaded successfully")
+print(f"\n[OK] Dataset loaded successfully")
 
 print(f"\nTotal rows: {len(df):,}")
 
@@ -177,7 +177,7 @@ missing_columns = [
 
 if missing_columns:
 
-    print("\n✗ Missing required columns:")
+    print("\n? Missing required columns:")
 
     for column in missing_columns:
 
@@ -188,12 +188,12 @@ if missing_columns:
     )
 
 
-print("\n✓ All required columns found")
+print("\n[OK] All required columns found")
 
 
 for column in REQUIRED_COLUMNS:
 
-    print(f"  ✓ {column}")
+    print(f"  [OK] {column}")
 
 
 # ============================================================
@@ -221,11 +221,11 @@ for column in OPTIONAL_COLUMNS:
 
     if column in df.columns:
 
-        print(f"✓ Found: {column}")
+        print(f"[OK] Found: {column}")
 
     else:
 
-        print(f"⚠ Not found: {column}")
+        print(f"[WARN] Not found: {column}")
 
 
 # ============================================================
@@ -254,7 +254,7 @@ missing_labels = df["label"].isna().sum()
 if missing_labels > 0:
 
     raise ValueError(
-        f"\n✗ Dataset contains {missing_labels} missing labels."
+        f"\n? Dataset contains {missing_labels} missing labels."
     )
 
 
@@ -276,11 +276,11 @@ invalid_labels = (
 if invalid_labels > 0:
 
     raise ValueError(
-        f"\n✗ Dataset contains {invalid_labels} invalid labels."
+        f"\n? Dataset contains {invalid_labels} invalid labels."
     )
 
 
-print("\n✓ Labels are valid")
+print("\n[OK] Labels are valid")
 
 print("\nAllowed labels:")
 
@@ -322,7 +322,7 @@ print(f"Total samples:           {len(df):,}")
 if negative_count == 0 or positive_count == 0:
 
     raise ValueError(
-        "\n✗ Dataset does not contain both classes."
+        "\n? Dataset does not contain both classes."
     )
 
 
@@ -344,13 +344,13 @@ print(
 if balance_ratio < 0.80:
 
     print(
-        "\n⚠ WARNING: Dataset is significantly imbalanced."
+        "\n[WARN] WARNING: Dataset is significantly imbalanced."
     )
 
 else:
 
     print(
-        "\n✓ Class balance is acceptable."
+        "\n[OK] Class balance is acceptable."
     )
 
 
@@ -409,11 +409,11 @@ print(
 if total_missing > 0:
 
     raise ValueError(
-        "\n✗ Missing values found in required columns."
+        "\n? Missing values found in required columns."
     )
 
 
-print("\n✓ No missing values found in required columns")
+print("\n[OK] No missing values found in required columns")
 
 
 # ============================================================
@@ -476,14 +476,14 @@ for column in NUMERIC_FEATURES:
 
         raise ValueError(
 
-            f"\n✗ Invalid numeric values found "
+            f"\n? Invalid numeric values found "
 
             f"in column: {column}"
 
         )
 
 
-print("\n✓ Numeric feature validation passed")
+print("\n[OK] Numeric feature validation passed")
 
 
 # ============================================================
@@ -551,11 +551,11 @@ print(
 if invalid_coordinate_count > 0:
 
     raise ValueError(
-        "\n✗ Invalid coordinates detected."
+        "\n? Invalid coordinates detected."
     )
 
 
-print("\n✓ Coordinate validation passed")
+print("\n[OK] Coordinate validation passed")
 
 
 # ============================================================
@@ -600,14 +600,14 @@ for column in RAINFALL_COLUMNS:
 
         raise ValueError(
 
-            f"\n✗ Negative rainfall values found "
+            f"\n? Negative rainfall values found "
 
             f"in {column}"
 
         )
 
 
-print("\n✓ Rainfall values are valid")
+print("\n[OK] Rainfall values are valid")
 
 
 # ============================================================
@@ -673,7 +673,7 @@ for check_name, condition in consistency_checks.items():
 
         raise ValueError(
 
-            f"\n✗ Rainfall cumulative window validation "
+            f"\n? Rainfall cumulative window validation "
 
             f"failed: {check_name}"
 
@@ -681,7 +681,7 @@ for check_name, condition in consistency_checks.items():
 
 
 print(
-    "\n✓ Rainfall cumulative windows are consistent"
+    "\n[OK] Rainfall cumulative windows are consistent"
 )
 
 
@@ -730,7 +730,7 @@ if duplicate_rows > 0:
 
     print(
 
-        f"✓ Rows after duplicate removal: "
+        f"[OK] Rows after duplicate removal: "
 
         f"{len(df):,}"
 
@@ -740,7 +740,7 @@ else:
 
     print(
 
-        "\n✓ No duplicate complete rows found."
+        "\n[OK] No duplicate complete rows found."
 
     )
 
@@ -785,7 +785,7 @@ if duplicate_coordinates > 0:
 
     print(
 
-        "\n⚠ Duplicate coordinates detected."
+        "\n[WARN] Duplicate coordinates detected."
 
     )
 
@@ -801,7 +801,7 @@ else:
 
     print(
 
-        "\n✓ No duplicate coordinates detected."
+        "\n[OK] No duplicate coordinates detected."
 
     )
 
@@ -919,7 +919,7 @@ prepared_df.to_csv(
 
 print(
 
-    "\n✓ Prepared dataset saved"
+    "\n[OK] Prepared dataset saved"
 
 )
 
@@ -1019,7 +1019,7 @@ train_df.to_csv(
 
 print(
 
-    f"\n✓ Training dataset saved"
+    f"\n[OK] Training dataset saved"
 
 )
 
@@ -1041,7 +1041,7 @@ test_df.to_csv(
 
 print(
 
-    f"\n✓ Testing dataset saved"
+    f"\n[OK] Testing dataset saved"
 
 )
 
@@ -1245,6 +1245,6 @@ print(
 )
 
 
-print("\n✓ ALL DATASET PREPARATION STEPS COMPLETED SUCCESSFULLY")
+print("\n[OK] ALL DATASET PREPARATION STEPS COMPLETED SUCCESSFULLY")
 
 print("=" * 70)
