@@ -171,6 +171,17 @@ def test_gis_zone_ml_risk():
     assert "risk_tier" in data
     print(f"[PASS] GIS Zone ML Risk Inference passed: {data['zone_name']} -> {data['probability_percentage']}% ({data['risk_tier']}, {data['historical_precedents_count']} precedents)")
 
+def test_gis_ml_heatmap_points():
+    response = client.get("/api/zones/ml-heatmap-points?extra_rainfall=25")
+    assert response.status_code == 200
+    data = response.json()
+    assert "points" in data
+    assert len(data["points"]) >= 50
+    assert any(p["category"] == "zone_susceptibility" for p in data["points"])
+    assert any(p["category"] == "historical_ground_truth" for p in data["points"])
+    assert all(0.0 <= p["weight"] <= 1.0 for p in data["points"])
+    print(f"[PASS] GIS ML Pattern Heatmap passed: {len(data['points'])} weighted points generated from ML model & training data")
+
 if __name__ == "__main__":
     print("\nRunning LandslideGuard Backend API Tests...\n")
     test_health()
@@ -189,4 +200,5 @@ if __name__ == "__main__":
     test_ml_datasets()
     test_gis_historical_training_events()
     test_gis_zone_ml_risk()
-    print("\nAll 16 Backend API tests passed successfully!\n")
+    test_gis_ml_heatmap_points()
+    print("\nAll 17 Backend API tests passed successfully!\n")

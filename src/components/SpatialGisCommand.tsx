@@ -5,9 +5,11 @@ import {
   NerState,
   HistoricalLandslideEvent,
   ZoneMlRiskEvaluation,
+  MlHeatmapPoint,
 } from '../types';
 import { HAZARD_ZONES, SENSOR_NODES, ASSET_URLS } from '../data/mockData';
 import { LandslideApi } from '../services/api';
+import { GisMapContainer } from './GisMapContainer';
 import {
   Layers,
   Crosshair,
@@ -28,6 +30,7 @@ import {
   MapPin,
   Cpu,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 
 interface SpatialGisCommandProps {
@@ -52,6 +55,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     sensorNodes: true,
     mlInference: true,
     trainingEvents: true,
+    mlHeatmap: true,
   });
   const [is3DMode, setIs3DMode] = useState(false);
   const [mapZoom, setMapZoom] = useState(1);
@@ -63,6 +67,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
   const [selectedEvent, setSelectedEvent] = useState<HistoricalLandslideEvent | null>(null);
   const [zoneMlRisk, setZoneMlRisk] = useState<ZoneMlRiskEvaluation | null>(null);
   const [stressRainfall, setStressRainfall] = useState<number>(0);
+  const [heatmapPoints, setHeatmapPoints] = useState<MlHeatmapPoint[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -101,6 +106,19 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
       active = false;
     };
   }, [selectedZone?.id, stressRainfall]);
+
+  // Live ML Heatmap points synthesized from model patterns
+  useEffect(() => {
+    let active = true;
+    LandslideApi.getMlHeatmapPoints(selectedState, stressRainfall).then((pts) => {
+      if (active && pts) {
+        setHeatmapPoints(pts);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [selectedState, stressRainfall]);
 
   // Filter hazard zones according to state
   const filteredZones =
@@ -346,185 +364,38 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
               >
                 📍 Training Ground Truth ({trainingEvents.length})
               </button>
+              <button
+                onClick={() =>
+                  setActiveLayers((p) => ({ ...p, mlHeatmap: !p.mlHeatmap }))
+                }
+                className={`text-[11px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                  activeLayers.mlHeatmap
+                    ? 'bg-gradient-to-r from-amber-600/50 to-red-600/50 text-amber-200 border-amber-400'
+                    : 'bg-transparent text-[#8a9297] border-[#273647]'
+                }`}
+              >
+                🔥 ML Heatmap ({heatmapPoints.length})
+              </button>
             </div>
 
-            {/* Simulated Satellite GIS Canvas with Vector Overlays */}
-            <div
-              className={`relative h-[340px] sm:h-[420px] bg-[#051424] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(12,65,96,0.6),rgba(5,20,36,0.95))] overflow-hidden transition-all duration-500 select-none ${
-                is3DMode ? 'perspective-1000 rotate-x-6' : ''
-              }`}
-            >
-              {/* Satellite Background Image */}
-              <img
-                src={ASSET_URLS.gisSatelliteMap}
-                alt="Satellite Topography"
-                className="w-full h-full object-cover opacity-65 mix-blend-luminosity filter contrast-125"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.opacity = '0';
-                }}
-                style={{
-                  transform: `scale(${mapZoom})`,
-                  transition: 'transform 0.4s ease',
-                }}
-              />
-
-              {/* Vector Grid & Coordinate HUD */}
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#1c2b3c22_1px,transparent_1px),linear-gradient(to_bottom,#1c2b3c22_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-
-              {/* Radar Doppler Precipitation Overlay (if enabled) */}
-              {activeLayers.imdRadar && (
-                <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(ellipse_at_40%_35%,#ffb4ab55_0%,#ffb87033_45%,transparent_75%)] animate-pulse" />
-              )}
-
-              {/* Contour Elevation Isolines (SVG Vector) */}
-              {activeLayers.demContours && (
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none opacity-40"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M 50 120 Q 200 80 400 130 T 700 90"
-                    fill="none"
-                    stroke="#44d8f1"
-                    strokeWidth="1"
-                    strokeDasharray="4 3"
-                  />
-                  <path
-                    d="M 80 160 Q 250 110 430 170 T 750 140"
-                    fill="none"
-                    stroke="#44d8f1"
-                    strokeWidth="1.2"
-                  />
-                  <path
-                    d="M 120 220 Q 300 160 480 230 T 800 200"
-                    fill="none"
-                    stroke="#90cfec"
-                    strokeWidth="1"
-                  />
-                  <path
-                    d="M 160 280 Q 350 220 540 290 T 850 260"
-                    fill="none"
-                    stroke="#8a9297"
-                    strokeWidth="0.8"
-                    strokeDasharray="2 2"
-                  />
-                  {/* Road Corridor vector (NH-10) */}
-                  <path
-                    d="M 220 30 C 260 120 320 200 380 320 C 420 380 470 420 520 450"
-                    fill="none"
-                    stroke="#ffb870"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    opacity="0.85"
-                  />
-                  <text
-                    x="250"
-                    y="150"
-                    fill="#ffb870"
-                    fontSize="10"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                  >
-                    NH-10 TEESTA ARTERY
-                  </text>
-                </svg>
-              )}
-
-              {/* Real Historical Landslide Training Events Layer */}
-              {activeLayers.trainingEvents &&
-                trainingEvents.map((evt) => (
-                  <div
-                    key={evt.id}
-                    onClick={() => {
-                      setSelectedEvent(evt);
-                      showToast(`Training Event ${evt.record_id} (${evt.event_date}) - 3D Rain: ${evt.rainfall_3d}mm, Slope: ${evt.slope}°`);
-                    }}
-                    style={{ top: evt.top_pct, left: evt.left_pct }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-15 group"
-                  >
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-black shadow-md group-hover:scale-150 transition-transform flex items-center justify-center">
-                      <div className="w-1 h-1 rounded-full bg-red-600" />
-                    </div>
-                    {/* Tooltip on hover */}
-                    <div className="hidden group-hover:block absolute bottom-3.5 left-1/2 -translate-x-1/2 bg-[#0b1726]/95 border border-amber-500/80 rounded px-2 py-1 text-[10px] font-mono text-white whitespace-nowrap shadow-xl z-30 pointer-events-none">
-                      <p className="font-bold text-amber-300">Historical Landslide Record</p>
-                      <p className="text-gray-300">{evt.event_date}</p>
-                      <p className="text-cyan-400">Rain 3D: {evt.rainfall_3d}mm • Slope: {evt.slope}° • Elev: {evt.elevation}m</p>
-                      <p className="text-[9px] text-gray-400">Citation: NER_Landslide_Rainfall_ML_Dataset_654.csv</p>
-                    </div>
-                  </div>
-                ))}
-
-              {/* Interactive Hazard Zone Pins */}
-              {filteredZones.map((zone) => {
-                const isSelected = selectedZone.id === zone.id;
-                return (
-                  <div
-                    key={zone.id}
-                    onClick={() => setSelectedZone(zone)}
-                    style={{ top: zone.top, left: zone.left }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20"
-                  >
-                    {/* ML Inference Probability Tag */}
-                    {activeLayers.mlInference && (
-                      <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow">
-                        RF {zone.id === selectedZone.id && zoneMlRisk ? `${zoneMlRisk.probability_percentage}%` : '92%'}
-                      </div>
-                    )}
-
-                    {/* Pulsing Alert Waves */}
-                    <div className="relative flex items-center justify-center">
-                      <span
-                        className={`animate-ping absolute inline-flex h-8 w-8 rounded-full opacity-75 ${
-                          zone.isCritical ? 'bg-[#ffb4ab]' : 'bg-[#ffb870]'
-                        }`}
-                      />
-                      <div
-                        className={`relative w-7 h-7 rounded-full flex items-center justify-center border-2 transition-transform transform group-hover:scale-125 shadow-lg ${
-                          isSelected
-                            ? 'bg-white text-[#051424] border-[#44d8f1] scale-110'
-                            : zone.isCritical
-                            ? 'bg-[#93000a] text-white border-[#ffb4ab]'
-                            : 'bg-[#7d4800] text-white border-[#ffb870]'
-                        }`}
-                      >
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-
-                    {/* Zone Pin Tag */}
-                    <div
-                      className={`absolute top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-tight shadow-md border ${
-                        isSelected
-                          ? 'bg-[#122131] text-[#44d8f1] border-[#44d8f1]'
-                          : 'bg-[#051424]/90 text-white border-[#273647]'
-                      }`}
-                    >
-                      {zone.name.split('(')[0]}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Crosshair coordinate HUD overlay */}
-              <div className="absolute bottom-3 left-3 bg-[#051424]/90 border border-[#1c2b3c] rounded px-2.5 py-1 text-[10px] font-mono text-[#bfc8cd] flex items-center gap-3 pointer-events-none">
-                <span className="flex items-center gap-1">
-                  <Crosshair className="w-3 h-3 text-[#44d8f1]" />
-                  <span>TARGET LOCK: {selectedZone.coords}</span>
-                </span>
-                <span className="text-[#8a9297]">|</span>
-                <span>ELEV: {selectedZone.elevation}</span>
-                <span className="text-[#8a9297]">|</span>
-                <span className="text-[#ffb870]">SLOPE: {selectedZone.slopeGradient}</span>
-              </div>
-
-              {/* North Arrow & Scale Bar */}
-              <div className="absolute top-3 right-3 bg-[#051424]/90 border border-[#1c2b3c] rounded px-2 py-1 text-[10px] font-mono text-[#8a9297] flex flex-col items-center pointer-events-none">
-                <div className="text-white font-bold text-xs">N ↑</div>
-                <div className="w-12 h-1 bg-[#44d8f1] mt-1" />
-                <span className="text-[9px] mt-0.5">2.5 km</span>
-              </div>
-            </div>
+            {/* Interactive Google Earth & ML Pattern Heatmap GIS Canvas */}
+            <GisMapContainer
+              selectedZone={selectedZone}
+              onSelectZone={(z) => setSelectedZone(z)}
+              zones={filteredZones}
+              sensors={filteredSensors}
+              trainingEvents={trainingEvents}
+              selectedEvent={selectedEvent}
+              onSelectEvent={(evt) => setSelectedEvent(evt)}
+              zoneMlRisk={zoneMlRisk}
+              heatmapPoints={heatmapPoints}
+              stressRainfall={stressRainfall}
+              activeLayers={activeLayers}
+              onToggleLayer={(key) =>
+                setActiveLayers((prev: any) => ({ ...prev, [key]: !prev[key] }))
+              }
+              onShowToast={showToast}
+            />
 
             {/* Bottom Status bar under map */}
             <div className="px-3.5 py-2 bg-[#0d1c2d] border-t border-[#1c2b3c] flex flex-wrap items-center justify-between text-xs text-[#8a9297] gap-2">

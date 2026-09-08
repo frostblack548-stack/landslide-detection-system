@@ -255,3 +255,20 @@ export interface ZoneMlRiskEvaluation {
   historical_precedents_count: number;
 }
 
+export interface MlHeatmapPoint {
+  latitude: number;
+  longitude: number;
+  weight: number;
+  category: 'zone_susceptibility' | 'historical_ground_truth' | 'corridor_stress';
+  label: string;
+  state: NerState;
+}
+
+export interface MlHeatmapResponse {
+  count: number;
+  state_filter: string;
+  extra_rainfall_applied: number;
+  points: MlHeatmapPoint[];
+}
+
+

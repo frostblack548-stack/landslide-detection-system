@@ -20,6 +20,8 @@ import {
   DatasetSummary,
   HistoricalLandslideEvent,
   ZoneMlRiskEvaluation,
+  MlHeatmapPoint,
+  MlHeatmapResponse,
 } from '../types';
 import {
   HAZARD_ZONES,
@@ -540,6 +542,41 @@ export const LandslideApi = {
       undefined,
       fallback
     );
+  },
+
+  async getMlHeatmapPoints(state?: NerState, extraRainfall: number = 0): Promise<MlHeatmapPoint[]> {
+    const queryParts: string[] = [];
+    if (state && state !== 'all') {
+      queryParts.push(`state=${encodeURIComponent(state)}`);
+    }
+    if (extraRainfall > 0) {
+      queryParts.push(`extra_rainfall=${extraRainfall}`);
+    }
+    const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+
+    const fallbackPoints: MlHeatmapPoint[] = [
+      { latitude: 27.5312, longitude: 88.5134, weight: 0.92, category: 'zone_susceptibility', label: 'Teesta Basin', state: 'sikkim' },
+      { latitude: 27.5392, longitude: 88.5194, weight: 0.81, category: 'corridor_stress', label: 'Teesta Runout North', state: 'sikkim' },
+      { latitude: 27.5242, longitude: 88.5044, weight: 0.74, category: 'corridor_stress', label: 'Singtam Approach', state: 'sikkim' },
+      { latitude: 25.2986, longitude: 91.7321, weight: 0.94, category: 'zone_susceptibility', label: 'Sohra Rim Pass', state: 'meghalaya' },
+      { latitude: 25.3046, longitude: 91.7381, weight: 0.85, category: 'corridor_stress', label: 'Sohra Escarpment East', state: 'meghalaya' },
+      { latitude: 24.8190, longitude: 93.6820, weight: 0.88, category: 'zone_susceptibility', label: 'Tupul / Noney Railway Cut', state: 'manipur' },
+      { latitude: 24.8250, longitude: 93.6880, weight: 0.78, category: 'corridor_stress', label: 'Ijai River Valley', state: 'manipur' },
+      { latitude: 25.1764, longitude: 93.0248, weight: 0.75, category: 'zone_susceptibility', label: 'Dima Hasao Hill Tracts', state: 'assam' },
+      { latitude: 26.3241, longitude: 94.5123, weight: 0.68, category: 'zone_susceptibility', label: 'Tuensang Ridge', state: 'nagaland' },
+    ];
+
+    try {
+      const res = await fetchJson<MlHeatmapResponse>(`/api/zones/ml-heatmap-points${query}`, undefined, {
+        count: fallbackPoints.length,
+        state_filter: state || 'all',
+        extra_rainfall_applied: extraRainfall,
+        points: fallbackPoints,
+      });
+      return res && res.points ? res.points : fallbackPoints;
+    } catch {
+      return fallbackPoints;
+    }
   },
 };
 

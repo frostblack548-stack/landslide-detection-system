@@ -127,6 +127,121 @@ def get_historical_training_events(
     return events
 
 
+@router.get("/ml-heatmap-points")
+def get_ml_heatmap_points(
+    state: Optional[str] = Query(None, description="Filter by NER state"),
+    extra_rainfall: float = Query(0.0, description="Simulated stress rainfall in mm"),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns weighted coordinate points [latitude, longitude, weight, category, label]
+    synthesized from:
+    1. Active Hazard Zones (evaluated with the Random Forest ML model)
+    2. Corridor Buffer Points along vulnerable mountain arteries
+    3. Verified Historical Training Ground Truth Events (654-dataset)
+    """
+    points = []
+    
+    # 1. Active hazard zones with live ML inference
+    query = db.query(HazardZoneModel)
+    if state and state.lower() != "all":
+        query = query.filter(HazardZoneModel.state == state.lower())
+    zones = query.all()
+
+    for zone in zones:
+        # Extract lat/lng
+        try:
+            coord_str = zone.coords.replace("°", "").replace("N", "").replace("E", "").replace("S", "").replace("W", "")
+            lat_part, lon_part = coord_str.split(",")
+            lat, lon = float(lat_part.strip()), float(lon_part.strip())
+        except Exception:
+            lat, lon = 27.5312, 88.5134
+
+        # Calculate live ML risk weight
+        try:
+            slope_val = float(zone.slopeGradient.replace("°", "").strip())
+            sat_val = float(zone.soilPoreSaturation.replace("%", "").strip())
+            elev_val = float(zone.elevation.replace("m", "").replace(",", "").strip())
+        except Exception:
+            slope_val, sat_val, elev_val = 45.0, 85.0, 1400.0
+
+        r3 = 135.5 + float(extra_rainfall)
+        r30 = 420.0 + float(extra_rainfall) * 1.5
+
+        if ml_model and ml_preprocessor:
+            sample_df = pd.DataFrame([{
+                "elevation": elev_val,
+                "slope": slope_val,
+                "aspect": 180.0,
+                "soil_id": "4276.0",
+                "landcover_class": "50.0",
+                "rainfall_1d": min(300.0, 45.0 + float(extra_rainfall) * 0.4),
+                "rainfall_3d": min(500.0, r3),
+                "rainfall_7d": min(700.0, 190.0 + float(extra_rainfall)),
+                "rainfall_15d": min(900.0, 280.0 + float(extra_rainfall) * 1.2),
+                "rainfall_30d": min(1200.0, r30),
+            }])
+            X_proc = ml_preprocessor.transform(sample_df)
+            probs = ml_model.predict_proba(X_proc)[0]
+            weight = float(probs[1]) if len(probs) > 1 else float(probs[0])
+        else:
+            weight = min(0.99, max(0.1, sat_val / 100.0 * 0.6 + slope_val / 60.0 * 0.4))
+
+        points.append({
+            "latitude": round(lat, 5),
+            "longitude": round(lon, 5),
+            "weight": round(weight, 3),
+            "category": "zone_susceptibility",
+            "label": zone.name,
+            "state": zone.state
+        })
+
+        # Add micro-cluster points around the zone epicenter to simulate physical spatial spread
+        spread_offsets = [
+            (0.008, 0.006, 0.88),
+            (-0.007, 0.008, 0.82),
+            (0.006, -0.009, 0.75),
+            (-0.005, -0.006, 0.70),
+        ]
+        for dlat, dlon, factor in spread_offsets:
+            points.append({
+                "latitude": round(lat + dlat, 5),
+                "longitude": round(lon + dlon, 5),
+                "weight": round(weight * factor, 3),
+                "category": "corridor_stress",
+                "label": f"{zone.name} Runout Sector",
+                "state": zone.state
+            })
+
+    # 2. Historical ground truth events from training dataset
+    training_events = load_training_events()
+    if state and state.lower() != "all":
+        training_events = [e for e in training_events if e["state"] == state.lower()]
+
+    for evt in training_events:
+        r3_evt = evt.get("rainfall_3d", 120.0)
+        slope_evt = evt.get("slope", 35.0)
+        base_w = min(1.0, 0.35 + 0.4 * (r3_evt / 200.0) + 0.25 * (slope_evt / 50.0))
+        stress_boost = min(0.3, (extra_rainfall / 120.0) * 0.25)
+        final_w = min(1.0, base_w + stress_boost)
+
+        points.append({
+            "latitude": evt["latitude"],
+            "longitude": evt["longitude"],
+            "weight": round(final_w, 3),
+            "category": "historical_ground_truth",
+            "label": f"Historical Landslide {evt['record_id']}",
+            "state": evt["state"]
+        })
+
+    return {
+        "count": len(points),
+        "state_filter": state or "all",
+        "extra_rainfall_applied": extra_rainfall,
+        "points": points
+    }
+
+
 @router.get("/{zone_id}")
 def get_hazard_zone_by_id(zone_id: str, db: Session = Depends(get_db)):
     zone = db.query(HazardZoneModel).filter(HazardZoneModel.id == zone_id).first()
@@ -257,4 +372,6 @@ def calculate_custom_susceptibility(req: SusceptibilityRequest):
         lithology_index=req.lithology_index,
         drainage_density_km=req.drainage_density_km,
     )
+
+
 
