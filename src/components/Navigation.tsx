@@ -1,6 +1,6 @@
 import React from 'react';
 import { OperationalModule } from '../types';
-import { Map, Activity, Camera, BellRing, ChevronRight } from 'lucide-react';
+import { Map, Activity, Camera, BellRing, ChevronRight, Cpu } from 'lucide-react';
 
 interface NavigationProps {
   activeModule: OperationalModule;
@@ -31,6 +31,15 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Activity,
       badge: 'Lead: 04h 31m',
       badgeColor: 'text-[#ffb4ab] bg-[#93000a]/40 border-[#ffb4ab]/30 animate-pulse',
+    },
+    {
+      id: 'ml-models-pipeline' as OperationalModule,
+      title: 'ML Models & Pipeline',
+      shortTitle: 'ML Models',
+      tag: 'RF ROC-AUC 0.896',
+      icon: Cpu,
+      badge: '19 Datasets',
+      badgeColor: 'text-[#53e8a6] bg-[#003822]/50 border-[#53e8a6]/30',
     },
     {
       id: 'crowdsource-cv-verification' as OperationalModule,

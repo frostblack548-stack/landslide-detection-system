@@ -12,6 +12,7 @@ import { TemporalLstmPredictor } from './components/TemporalLstmPredictor';
 import { CrowdsourceCvVerification } from './components/CrowdsourceCvVerification';
 import { BroadcastAndDispatch } from './components/BroadcastAndDispatch';
 import { FieldReportModal } from './components/FieldReportModal';
+import { MlPipelineCommand } from './components/MlPipelineCommand';
 import { ASSET_URLS } from './data/mockData';
 import { PlusCircle, Shield, AlertTriangle, Radio, Phone, Zap } from 'lucide-react';
 
@@ -101,6 +102,10 @@ export default function App() {
               triggerGlobalToast('Stage 3 High-Decibel Acoustic Warning Siren Active across 6 towers')
             }
           />
+        )}
+
+        {activeModule === 'ml-models-pipeline' && (
+          <MlPipelineCommand />
         )}
       </main>
 

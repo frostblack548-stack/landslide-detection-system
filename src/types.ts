@@ -2,7 +2,8 @@ export type OperationalModule =
   | 'spatial-gis-command'
   | 'temporal-lstm-predictor'
   | 'crowdsource-cv-verification'
-  | 'emergency-broadcast-and-dispatch';
+  | 'emergency-broadcast-and-dispatch'
+  | 'ml-models-pipeline';
 
 export type NerState =
   | 'all'
@@ -141,4 +142,71 @@ export interface AuditLogEntry {
   authority: string;
   type: 'order' | 'broadcast' | 'corridor' | 'siren';
   highlight?: boolean;
+}
+
+export interface MlPredictionInput {
+  elevation: number;
+  slope: number;
+  aspect: number;
+  soil_id: string;
+  landcover_class: string;
+  rainfall_1d: number;
+  rainfall_3d: number;
+  rainfall_7d: number;
+  rainfall_15d: number;
+  rainfall_30d: number;
+}
+
+export interface MlPredictionResult {
+  prediction: number;
+  prediction_label: 'LANDSLIDE' | 'NO_LANDSLIDE';
+  landslide_probability: number;
+  probability_percentage: number;
+  risk_level: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+  action_code: string;
+  input_features: Record<string, any>;
+  model: string;
+}
+
+export interface MlMetrics {
+  test_records: number;
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+  roc_auc: number;
+  true_positives: number;
+  true_negatives: number;
+  false_positives: number;
+  false_negatives: number;
+}
+
+export interface MlModelComparison {
+  model: string;
+  train_accuracy: number;
+  train_roc_auc: number;
+  test_accuracy: number;
+  test_precision: number;
+  test_recall: number;
+  test_f1: number;
+  test_roc_auc: number;
+  true_positives: number;
+  true_negatives: number;
+  false_positives: number;
+  false_negatives: number;
+}
+
+export interface MlFeatureImportance {
+  feature: string;
+  display_name: string;
+  importance: number;
+  importance_percentage: number;
+}
+
+export interface DatasetSummary {
+  name: string;
+  size: string;
+  size_bytes: number;
+  record_count: number;
+  description: string;
 }
