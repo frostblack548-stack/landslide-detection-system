@@ -210,3 +210,48 @@ export interface DatasetSummary {
   record_count: number;
   description: string;
 }
+
+export interface HistoricalLandslideEvent {
+  id: string;
+  record_id: string;
+  latitude: number;
+  longitude: number;
+  state: NerState;
+  event_date: string;
+  rainfall_3d: number;
+  slope: number;
+  elevation: number;
+  top_pct: string;
+  left_pct: string;
+  soil_id: string;
+  landcover_class: string;
+  dataset_source: string;
+  type: string;
+}
+
+export interface ZoneMlRiskEvaluation {
+  zone_id: string;
+  zone_name: string;
+  state: NerState;
+  prediction: number;
+  prediction_label: 'LANDSLIDE' | 'NO_LANDSLIDE';
+  landslide_probability: number;
+  probability_percentage: number;
+  risk_tier: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+  action_code: string;
+  model_name: string;
+  feature_summary: {
+    elevation_m: number;
+    slope_deg: number;
+    soil_saturation_pct: number;
+    rainfall_3d_mm: number;
+    rainfall_30d_mm: number;
+  };
+  primary_features: {
+    name: string;
+    value: string;
+    impact: string;
+  }[];
+  historical_precedents_count: number;
+}
+

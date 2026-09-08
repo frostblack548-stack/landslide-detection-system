@@ -152,6 +152,25 @@ def test_ml_datasets():
     assert len(data) >= 15
     print(f"[PASS] Landslide Datasets Inventory passed: {len(data)} datasets integrated")
 
+def test_gis_historical_training_events():
+    response = client.get("/api/zones/historical-training-events")
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) >= 30
+    assert any("rainfall_3d" in evt for evt in events)
+    assert any("top_pct" in evt and "left_pct" in evt for evt in events)
+    print(f"[PASS] GIS Historical Training Events passed: {len(events)} real ground-truth events loaded with canvas coordinates")
+
+def test_gis_zone_ml_risk():
+    response = client.get("/api/zones/zone-sk-01/ml-risk?extra_rainfall=30")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["zone_id"] == "zone-sk-01"
+    assert "probability_percentage" in data
+    assert "historical_precedents_count" in data
+    assert "risk_tier" in data
+    print(f"[PASS] GIS Zone ML Risk Inference passed: {data['zone_name']} -> {data['probability_percentage']}% ({data['risk_tier']}, {data['historical_precedents_count']} precedents)")
+
 if __name__ == "__main__":
     print("\nRunning LandslideGuard Backend API Tests...\n")
     test_health()
@@ -168,4 +187,6 @@ if __name__ == "__main__":
     test_ml_metrics()
     test_ml_comparison()
     test_ml_datasets()
-    print("\nAll 14 Backend API tests passed successfully!\n")
+    test_gis_historical_training_events()
+    test_gis_zone_ml_risk()
+    print("\nAll 16 Backend API tests passed successfully!\n")

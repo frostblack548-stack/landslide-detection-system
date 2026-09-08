@@ -78,6 +78,7 @@ export default function App() {
             onNavigateToDispatch={(zoneId) =>
               setActiveModule('emergency-broadcast-and-dispatch')
             }
+            onNavigateToMlPipeline={() => setActiveModule('ml-models-pipeline')}
           />
         )}
 
