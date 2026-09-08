@@ -9,6 +9,7 @@ import {
   AlertOctagon,
   Cpu,
   Info,
+  PlayCircle,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -72,6 +73,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: AlertOctagon,
       badge: '24x7',
       badgeColor: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
+    },
+    {
+      id: 'risk-simulator',
+      title: 'ML Simulator',
+      icon: PlayCircle,
+      badge: 'Real ML',
+      badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
     },
     {
       id: 'about',

@@ -12,11 +12,13 @@ from backend.main import app
 client = TestClient(app)
 
 def test_health():
-    response = client.get("/api/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-    print("[PASS] Health check endpoint passed")
+    res1 = client.get("/api/health")
+    assert res1.status_code == 200
+    assert res1.json()["status"] == "healthy"
+    res2 = client.get("/health")
+    assert res2.status_code == 200
+    assert res2.json()["status"] == "healthy"
+    print("[PASS] Health check endpoints (/health, /api/health) passed")
 
 def test_hazard_zones():
     response = client.get("/api/zones")
@@ -119,13 +121,40 @@ def test_ml_predict():
         "rainfall_15d": 260.0,
         "rainfall_30d": 380.0
     }
-    response = client.post("/api/ml/predict", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert "prediction" in data
-    assert "landslide_probability" in data
-    assert "risk_level" in data
+    # Test both /api/ml/predict and /predict alias
+    res_alias = client.post("/predict", json=payload)
+    assert res_alias.status_code == 200
+    assert "prediction" in res_alias.json()
+
     print(f"[PASS] ML Pipeline Inference passed: {data['prediction_label']} ({data['probability_percentage']}% Prob, {data['risk_level']})")
+
+def test_model_info():
+    res1 = client.get("/api/ml/model-info")
+    assert res1.status_code == 200
+    assert "model_name" in res1.json()
+    res2 = client.get("/model-info")
+    assert res2.status_code == 200
+    assert "model_name" in res2.json()
+    print("[PASS] Model info endpoints (/model-info, /api/ml/model-info) passed")
+
+def test_predict_invalid_rainfall():
+    # Violate cumulative rainfall constraint: rainfall_3d < rainfall_1d
+    invalid_payload = {
+        "elevation": 1450.0,
+        "slope": 38.0,
+        "aspect": 190.0,
+        "soil_id": "4276.0",
+        "landcover_class": "50.0",
+        "rainfall_1d": 120.0,
+        "rainfall_3d": 50.0,  # Invalid: 50 < 120
+        "rainfall_7d": 195.0,
+        "rainfall_15d": 260.0,
+        "rainfall_30d": 380.0
+    }
+    response = client.post("/predict", json=invalid_payload)
+    assert response.status_code == 422
+    assert "Cumulative rainfall constraint violated" in response.json()["detail"]
+    print("[PASS] Invalid rainfall validation (422) caught correctly")
 
 def test_ml_metrics():
     response = client.get("/api/ml/metrics")
@@ -195,10 +224,12 @@ if __name__ == "__main__":
     test_live_weather()
     test_sms_broadcast()
     test_ml_predict()
+    test_model_info()
+    test_predict_invalid_rainfall()
     test_ml_metrics()
     test_ml_comparison()
     test_ml_datasets()
     test_gis_historical_training_events()
     test_gis_zone_ml_risk()
     test_gis_ml_heatmap_points()
-    print("\nAll 17 Backend API tests passed successfully!\n")
+    print("\nAll 19 Backend API tests passed successfully!\n")

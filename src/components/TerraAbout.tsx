@@ -107,10 +107,28 @@ export const TerraAbout: React.FC<TerraAboutProps> = ({ onNavigate, theme }) => 
             <span>Advanced Research & Dispatch Tooling</span>
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button
+              onClick={() => onNavigate('risk-simulator')}
+              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] cursor-pointer ${
+                isDark
+                  ? 'bg-emerald-950/20 border-emerald-500/50 hover:border-emerald-400'
+                  : 'bg-emerald-50/50 border-emerald-300 hover:border-emerald-500'
+              }`}
+            >
+              <Cpu className="w-5 h-5 text-emerald-400 mb-2" />
+              <div className="font-bold text-sm text-emerald-400 flex items-center justify-between">
+                <span>ML Risk Simulator</span>
+                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Live API</span>
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                Run inference with real trained Random Forest on custom terrain, soil and cumulative rainfall.
+              </div>
+            </button>
+
             <button
               onClick={() => onNavigate('ml-models-pipeline')}
-              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] cursor-pointer ${
                 isDark
                   ? 'bg-slate-800/40 border-slate-700/60 hover:border-emerald-500'
                   : 'bg-slate-50 border-slate-200 hover:border-emerald-500'
@@ -119,28 +137,28 @@ export const TerraAbout: React.FC<TerraAboutProps> = ({ onNavigate, theme }) => 
               <BarChart3 className="w-5 h-5 text-purple-400 mb-2" />
               <div className="font-bold text-sm">ML Pipeline Sandbox</div>
               <div className="text-[11px] text-slate-400 mt-1">
-                Train models, inspect confusion matrices, and evaluate ROC curves on 19 datasets.
+                Inspect metrics, feature importance, confusion matrices, and ROC curves on 19 datasets.
               </div>
             </button>
 
             <button
-              onClick={() => onNavigate('prediction')}
-              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+              onClick={() => onNavigate('temporal-lstm-predictor')}
+              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] cursor-pointer ${
                 isDark
                   ? 'bg-slate-800/40 border-slate-700/60 hover:border-emerald-500'
                   : 'bg-slate-50 border-slate-200 hover:border-emerald-500'
               }`}
             >
               <Activity className="w-5 h-5 text-blue-400 mb-2" />
-              <div className="font-bold text-sm">LSTM Temporal Ingestion</div>
+              <div className="font-bold text-sm">Temporal Ingestion</div>
               <div className="text-[11px] text-slate-400 mt-1">
                 Live sensor ingestion simulation and 24-hour lead-time projection graphs.
               </div>
             </button>
 
             <button
-              onClick={() => onNavigate('broadcast')}
-              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+              onClick={() => onNavigate('emergency-broadcast-and-dispatch')}
+              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] cursor-pointer ${
                 isDark
                   ? 'bg-slate-800/40 border-slate-700/60 hover:border-emerald-500'
                   : 'bg-slate-50 border-slate-200 hover:border-emerald-500'
@@ -154,8 +172,8 @@ export const TerraAbout: React.FC<TerraAboutProps> = ({ onNavigate, theme }) => 
             </button>
 
             <button
-              onClick={() => onNavigate('crowdsource')}
-              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+              onClick={() => onNavigate('crowdsource-cv-verification')}
+              className={`p-4 rounded-xl border text-left transition-all hover:scale-[1.02] cursor-pointer ${
                 isDark
                   ? 'bg-slate-800/40 border-slate-700/60 hover:border-emerald-500'
                   : 'bg-slate-50 border-slate-200 hover:border-emerald-500'

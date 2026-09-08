@@ -10,7 +10,8 @@ export type OperationalModule =
   | 'temporal-lstm-predictor'
   | 'crowdsource-cv-verification'
   | 'emergency-broadcast-and-dispatch'
-  | 'ml-models-pipeline';
+  | 'ml-models-pipeline'
+  | 'risk-simulator';
 
 export type NerState =
   | 'all'
@@ -149,6 +150,32 @@ export interface AuditLogEntry {
   authority: string;
   type: 'order' | 'broadcast' | 'corridor' | 'siren';
   highlight?: boolean;
+}
+
+export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+
+export interface PredictionRequest {
+  elevation: number;
+  slope: number;
+  aspect: number;
+  soil_id: string;
+  landcover_class: string;
+  rainfall_1d: number;
+  rainfall_3d: number;
+  rainfall_7d: number;
+  rainfall_15d: number;
+  rainfall_30d: number;
+}
+
+export interface PredictionResponse {
+  prediction: 0 | 1;
+  prediction_label: 'LANDSLIDE' | 'NO_LANDSLIDE';
+  landslide_probability: number;
+  probability_percentage?: number;
+  risk_level: RiskLevel;
+  action_code?: string;
+  input_features: PredictionRequest;
+  model?: string;
 }
 
 export interface MlPredictionInput {

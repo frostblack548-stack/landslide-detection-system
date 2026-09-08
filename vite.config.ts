@@ -19,6 +19,18 @@ export default defineConfig(() => {
           target: 'http://127.0.0.1:8000',
           changeOrigin: true,
         },
+        '/predict': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+        },
+        '/model-info': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+        },
+        '/health': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+        },
       },
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
