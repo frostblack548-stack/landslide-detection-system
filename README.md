@@ -1080,6 +1080,15 @@ The objective is to support improved landslide preparedness, risk awareness, and
 # Team
 
 **Team Name:** Supernova Devs
+# Team Members:
+
+- B NITHIN CHANDRA GIT REPO: https://github.com/bnithinchandra-dotcom
+- 2
+- 3
+- 4
+- 5
+- 6
+  
 
 TerraGuard is developed as a Smart India Hackathon solution for **Problem Statement 26001**.
 
