@@ -33,6 +33,14 @@ interface TerraRiskDetailsProps {
 
 type MetricCategory = 'rainfall' | 'soil_moisture' | 'temperature' | 'events';
 
+type MetricTabConfig = {
+  id: MetricCategory;
+  label: string;
+  unit: string;
+  icon: React.ReactNode;
+  color: string;
+};
+
 export const TerraRiskDetails: React.FC<TerraRiskDetailsProps> = ({
   selectedZone,
   onSelectZone,
@@ -78,6 +86,32 @@ export const TerraRiskDetails: React.FC<TerraRiskDetailsProps> = ({
     10
   );
 
+  const rainfallSeries = MONTHLY_HISTORICAL_DATA.rainfall;
+  const landslideSeries = MONTHLY_HISTORICAL_DATA.events;
+  const lineChartWidth = 760;
+  const lineChartHeight = 250;
+  const lineChartPadding = { top: 18, right: 42, bottom: 30, left: 42 };
+  const lineChartInnerWidth = lineChartWidth - lineChartPadding.left - lineChartPadding.right;
+  const lineChartInnerHeight = lineChartHeight - lineChartPadding.top - lineChartPadding.bottom;
+  const rainfallMax = Math.max(...rainfallSeries.map((item) => item.current), 1);
+  const landslideMax = Math.max(...landslideSeries.map((item) => item.current), 1);
+  const linePoint = (index: number, value: number, max: number) => ({
+    x: lineChartPadding.left + (index / (rainfallSeries.length - 1)) * lineChartInnerWidth,
+    y: lineChartPadding.top + lineChartInnerHeight - (value / max) * lineChartInnerHeight,
+  });
+  const rainfallLinePoints = rainfallSeries
+    .map((item, index) => {
+      const point = linePoint(index, item.current, rainfallMax);
+      return `${point.x},${point.y}`;
+    })
+    .join(' ');
+  const landslideLinePoints = landslideSeries
+    .map((item, index) => {
+      const point = linePoint(index, item.current, landslideMax);
+      return `${point.x},${point.y}`;
+    })
+    .join(' ');
+
   // Filter shelters for current state or fallback to top shelters
   const sheltersForZone = RELIEF_SHELTERS.filter(
     (s) => s.state.toLowerCase() === selectedZone.state.toLowerCase()
@@ -86,13 +120,7 @@ export const TerraRiskDetails: React.FC<TerraRiskDetailsProps> = ({
     sheltersForZone.length > 0 ? sheltersForZone : RELIEF_SHELTERS.slice(0, 3);
 
   // Tab metadata
-  const tabConfigs: {
-    id: MetricCategory;
-    label: string;
-    unit: string;
-    icon: React.ReactNode;
-    color: string;
-  } = {
+  const metricTabConfigs: Record<MetricCategory, MetricTabConfig> = {
     rainfall: {
       id: 'rainfall',
       label: 'Rainfall',
@@ -121,7 +149,8 @@ export const TerraRiskDetails: React.FC<TerraRiskDetailsProps> = ({
       icon: <Activity className="w-4 h-4" />,
       color: '#ef4444',
     },
-  }[activeMetricTab];
+  };
+  const tabConfigs = metricTabConfigs[activeMetricTab];
 
   return (
     <div
@@ -419,6 +448,58 @@ export const TerraRiskDetails: React.FC<TerraRiskDetailsProps> = ({
                       2026 Current
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Rainfall and landslide event relationship */}
+              <div className={`mb-5 rounded-xl border p-3 sm:p-4 ${isDark ? 'border-slate-800 bg-slate-950/50' : 'border-slate-200 bg-slate-50/70'}`}>
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold">Rainfall vs. Landslide Activity</h4>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Monthly 2026 trend for the monitored corridor
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px] font-medium">
+                    <span className="flex items-center gap-1.5 text-blue-500"><span className="h-2 w-5 rounded-full bg-blue-500" />Rainfall (mm)</span>
+                    <span className="flex items-center gap-1.5 text-red-500"><span className="h-2 w-5 rounded-full bg-red-500" />Landslides</span>
+                  </div>
+                </div>
+
+                <div className="relative overflow-x-auto">
+                  {hoveredMonth && (() => {
+                    const rainfallPoint = rainfallSeries.find((item) => item.month === hoveredMonth);
+                    const landslidePoint = landslideSeries.find((item) => item.month === hoveredMonth);
+                    return rainfallPoint && landslidePoint ? (
+                      <div className={`absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-lg border px-3 py-1.5 text-[11px] font-mono shadow-lg ${isDark ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}>
+                        <strong className="text-emerald-500">{hoveredMonth}</strong>: {rainfallPoint.current} mm rain • {landslidePoint.current} landslides
+                      </div>
+                    ) : null;
+                  })()}
+                  <svg viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`} className="min-w-[560px] w-full" role="img" aria-label="Monthly rainfall and landslide activity line chart">
+                    {[0, 0.5, 1].map((ratio) => {
+                      const y = lineChartPadding.top + lineChartInnerHeight * ratio;
+                      return <line key={ratio} x1={lineChartPadding.left} x2={lineChartWidth - lineChartPadding.right} y1={y} y2={y} stroke={isDark ? '#273647' : '#cbd5e1'} strokeDasharray="4 5" />;
+                    })}
+                    <text x="8" y={lineChartPadding.top + 4} fill="#3b82f6" fontSize="10">{rainfallMax} mm</text>
+                    <text x="14" y={lineChartHeight - lineChartPadding.bottom} fill="#3b82f6" fontSize="10">0</text>
+                    <text x={lineChartWidth - 34} y={lineChartPadding.top + 4} fill="#ef4444" fontSize="10" textAnchor="end">{landslideMax}</text>
+                    <text x={lineChartWidth - 34} y={lineChartHeight - lineChartPadding.bottom} fill="#ef4444" fontSize="10" textAnchor="end">0</text>
+                    <polyline points={rainfallLinePoints} fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={landslideLinePoints} fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    {rainfallSeries.map((item, index) => {
+                      const rainfallPoint = linePoint(index, item.current, rainfallMax);
+                      const landslidePoint = linePoint(index, landslideSeries[index].current, landslideMax);
+                      const isHovered = hoveredMonth === item.month;
+                      return (
+                        <g key={item.month} onMouseEnter={() => setHoveredMonth(item.month)} onMouseLeave={() => setHoveredMonth(null)} className="cursor-pointer">
+                          <circle cx={rainfallPoint.x} cy={rainfallPoint.y} r={isHovered ? 5 : 3.5} fill="#3b82f6" stroke={isDark ? '#0f172a' : '#fff'} strokeWidth="2" />
+                          <circle cx={landslidePoint.x} cy={landslidePoint.y} r={isHovered ? 5 : 3.5} fill="#ef4444" stroke={isDark ? '#0f172a' : '#fff'} strokeWidth="2" />
+                          <text x={rainfallPoint.x} y={lineChartHeight - 9} fill={isHovered ? '#10b981' : isDark ? '#94a3b8' : '#64748b'} fontSize="10" textAnchor="middle" fontWeight={isHovered ? '700' : '400'}>{item.month}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
                 </div>
               </div>
 

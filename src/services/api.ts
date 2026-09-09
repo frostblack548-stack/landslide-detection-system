@@ -22,6 +22,7 @@ import {
   ZoneMlRiskEvaluation,
   MlHeatmapPoint,
   MlHeatmapResponse,
+  EarthquakeResponse,
 } from '../types';
 import {
   HAZARD_ZONES,
@@ -57,6 +58,23 @@ async function fetchJson<T>(url: string, options?: RequestInit, fallback?: T): P
 }
 
 export const LandslideApi = {
+  async getEarthquakes(latitude?: number, longitude?: number): Promise<EarthquakeResponse> {
+    const params = new URLSearchParams({ radius_km: '500', limit: '100' });
+    if (latitude !== undefined && longitude !== undefined) {
+      params.set('latitude', String(latitude));
+      params.set('longitude', String(longitude));
+    }
+    return fetchJson<EarthquakeResponse>(`/api/earthquakes?${params.toString()}`, undefined, {
+      earthquake_data_available: false,
+      source_status: 'temporarily_unavailable',
+      source: 'National Center for Seismology',
+      source_url: 'https://seismo.gov.in/',
+      events: [],
+      earthquake_trigger_score: 0,
+      message: 'Live earthquake data is temporarily unavailable.',
+    });
+  },
+
   // Layer 1: Hazard Zones & Susceptibility
   async getHazardZones(state?: NerState): Promise<HazardZone[]> {
     const query = state && state !== 'all' ? `?state=${encodeURIComponent(state)}` : '';

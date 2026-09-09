@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from starlette.testclient import TestClient
 from backend.main import app
+from backend.services import earthquake_service as earthquake_module
 
 client = TestClient(app)
 
@@ -216,6 +217,53 @@ def test_gis_ml_heatmap_points():
     assert all(0.0 <= p["weight"] <= 1.0 for p in data["points"])
     print(f"[PASS] GIS ML Pattern Heatmap passed: {len(data['points'])} weighted points generated from ML model & training data")
 
+def test_official_earthquake_contract():
+    response = client.get("/api/earthquakes?latitude=27.53&longitude=88.51&radius_km=500")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source"] == "National Center for Seismology"
+    assert "earthquake_data_available" in data
+    assert "earthquake_trigger_score" in data
+    assert isinstance(data["events"], list)
+    if data["events"]:
+        event = data["events"][0]
+        assert set(("id", "magnitude", "latitude", "longitude", "depth_km", "location", "event_time", "source", "status")) <= set(event)
+        assert event["source"] == "National Center for Seismology"
+    print(f"[PASS] Official NCS earthquake feed contract passed ({len(data['events'])} nearby events)")
+
+    no_nearby = client.get("/api/earthquakes?latitude=0&longitude=0&radius_km=1")
+    assert no_nearby.status_code == 200
+    no_nearby_data = no_nearby.json()
+    if no_nearby_data["earthquake_data_available"]:
+        assert no_nearby_data["events"] == []
+        assert no_nearby_data["earthquake_trigger_score"] == 0.0
+    print("[PASS] No-nearby-earthquake state keeps the trigger at zero")
+
+def test_earthquake_parser_and_safe_fallback():
+    html = """
+    <li data-json='{"event_id":"ncs-1","event_name":"M: 4.2 - Sikkim","origin_time":"2026-09-09 10:01:25 IST","lat_long":"27.531, 88.513","magnitude_depth":"M: 4.2 , D: 20km","event_type":"Reviewed"}'></li>
+    <li data-json='{"event_id":"ncs-1","event_name":"M: 4.2 - Sikkim","origin_time":"2026-09-09 10:01:25 IST","lat_long":"27.531, 88.513","magnitude_depth":"M: 4.2 , D: 20km","event_type":"Reviewed"}'></li>
+    <li data-json='not-json'></li>
+    """
+    events = earthquake_module.EarthquakeService._parse_ncs_html(html)
+    assert len(events) == 1
+    assert events[0]["location"] == "Sikkim"
+    assert events[0]["event_time"].endswith("+05:30")
+
+    original_get = earthquake_module.requests.get
+    earthquake_module.earthquake_service._cache = None
+    earthquake_module.requests.get = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline"))
+    try:
+        response = earthquake_module.earthquake_service.get_earthquakes()
+        assert response["earthquake_data_available"] is False
+        assert response["source_status"] == "temporarily_unavailable"
+        assert response["events"] == []
+        assert response["earthquake_trigger_score"] == 0.0
+    finally:
+        earthquake_module.requests.get = original_get
+        earthquake_module.earthquake_service._cache = None
+    print("[PASS] Earthquake deduplication, validation, and unavailable fallback passed")
+
 if __name__ == "__main__":
     print("\nRunning LandslideGuard Backend API Tests...\n")
     test_health()
@@ -237,4 +285,6 @@ if __name__ == "__main__":
     test_gis_historical_training_events()
     test_gis_zone_ml_risk()
     test_gis_ml_heatmap_points()
-    print("\nAll 19 Backend API tests passed successfully!\n")
+    test_official_earthquake_contract()
+    test_earthquake_parser_and_safe_fallback()
+    print("\nAll 21 Backend API tests passed successfully!\n")

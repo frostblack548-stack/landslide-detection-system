@@ -2,6 +2,7 @@ export type OperationalModule =
   | 'home'
   | 'dashboard'
   | 'risk-map'
+  | 'earthquake-monitor'
   | 'risk-details'
   | 'alerts'
   | 'emergency-sos'
@@ -15,6 +16,7 @@ export type OperationalModule =
 
 export type NerState =
   | 'all'
+  | 'uttarakhand'
   | 'sikkim'
   | 'assam'
   | 'meghalaya'
@@ -303,6 +305,29 @@ export interface MlHeatmapResponse {
   state_filter: string;
   extra_rainfall_applied: number;
   points: MlHeatmapPoint[];
+}
+
+export interface EarthquakeEvent {
+  id: string;
+  magnitude: number;
+  latitude: number;
+  longitude: number;
+  depth_km: number;
+  location: string;
+  event_time: string;
+  source: 'National Center for Seismology';
+  status: 'reviewed' | 'unreviewed' | 'unknown';
+}
+
+export interface EarthquakeResponse {
+  earthquake_data_available: boolean;
+  source_status: 'available' | 'temporarily_unavailable';
+  source: 'National Center for Seismology';
+  source_url: string;
+  last_updated?: string;
+  events: EarthquakeEvent[];
+  earthquake_trigger_score: number;
+  message: string;
 }
 
 export interface MonthlyMetricComparison {

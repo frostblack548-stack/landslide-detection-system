@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HazardZone, OperationalModule } from '../types';
+import { LandslideApi } from '../services/api';
 import {
   Bell,
   AlertTriangle,
@@ -42,11 +43,23 @@ export const TerraAlerts: React.FC<TerraAlertsProps> = ({
   const [severityFilter, setSeverityFilter] = useState<'all' | 'high' | 'moderate' | 'low'>('all');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [earthquakeSummary, setEarthquakeSummary] = useState('Checking NCS feed...');
 
   const isDark = theme === 'dark';
 
+  useEffect(() => {
+    const match = selectedZone.coords.match(/(-?\d+(?:\.\d+)?)[^,]*,\s*(-?\d+(?:\.\d+)?)/);
+    const latitude = match ? Number(match[1]) : undefined;
+    const longitude = match ? Number(match[2]) : undefined;
+    LandslideApi.getEarthquakes(latitude, longitude).then((response) => {
+      setEarthquakeSummary(response.earthquake_data_available
+        ? `${response.events.length} nearby NCS event${response.events.length === 1 ? '' : 's'} • trigger ${Math.round(response.earthquake_trigger_score * 100)}%`
+        : response.message);
+    });
+  }, [selectedZone.coords]);
+
   // Extract regions
-  const regions = ['all', ...Array.from(new Set(zones.map((z) => z.state)))];
+  const regions: string[] = ['all', ...Array.from(new Set(zones.map((z) => z.state)))];
 
   // Filtered zones acting as active alerts
   const filteredZones = zones.filter((z) => {
@@ -260,6 +273,9 @@ export const TerraAlerts: React.FC<TerraAlertsProps> = ({
 
           {/* Region Dropdown & Search Input */}
           <div className="flex flex-wrap items-center gap-3">
+            <div className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${isDark ? 'border-orange-500/30 bg-orange-500/10 text-orange-300' : 'border-orange-200 bg-orange-50 text-orange-700'}`}>
+              NCS Earthquake Layer: {earthquakeSummary}
+            </div>
             <select
               value={selectedRegion}
               onChange={(e) => setSelectedRegion(e.target.value)}

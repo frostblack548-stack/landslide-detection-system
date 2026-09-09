@@ -25,6 +25,7 @@ const CrowdsourceCvVerification = lazy(() => import('./components/CrowdsourceCvV
 const BroadcastAndDispatch = lazy(() => import('./components/BroadcastAndDispatch').then((module) => ({ default: module.BroadcastAndDispatch })));
 const MlPipelineCommand = lazy(() => import('./components/MlPipelineCommand').then((module) => ({ default: module.MlPipelineCommand })));
 const LandslideRiskSimulator = lazy(() => import('./components/LandslideRiskSimulator'));
+const EarthquakeMonitor = lazy(() => import('./components/EarthquakeMonitor').then((module) => ({ default: module.EarthquakeMonitor })));
 
 const ModuleLoadingFallback = () => (
   <div className="flex min-h-[240px] items-center justify-center text-xs font-mono text-slate-400">
@@ -55,6 +56,7 @@ export default function App() {
     LandslideApi.getHazardZones(selectedState).then((data) => {
       if (active && data && data.length > 0) {
         setZones(data);
+        setSelectedZone(data[0]);
       }
     });
     return () => {
@@ -166,6 +168,10 @@ export default function App() {
               theme={theme}
             />
           </div>
+        )}
+
+        {activeModule === 'earthquake-monitor' && (
+          <EarthquakeMonitor selectedZone={selectedZone} theme={theme} />
         )}
 
         {/* Screen 4: Risk Details with Radial Meter & Comparative Charts */}

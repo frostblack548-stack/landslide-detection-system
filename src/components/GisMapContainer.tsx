@@ -7,6 +7,7 @@ import {
   HistoricalLandslideEvent,
   MlHeatmapPoint,
   ZoneMlRiskEvaluation,
+  EarthquakeEvent,
 } from '../types';
 import {
   Crosshair,
@@ -34,6 +35,8 @@ interface GisMapContainerProps {
   onSelectEvent: (event: HistoricalLandslideEvent | null) => void;
   zoneMlRisk: ZoneMlRiskEvaluation | null;
   heatmapPoints: MlHeatmapPoint[];
+  earthquakes: EarthquakeEvent[];
+  earthquakeStatus: string;
   stressRainfall: number;
   activeLayers: {
     susceptibility: boolean;
@@ -44,6 +47,7 @@ interface GisMapContainerProps {
     mlInference: boolean;
     trainingEvents: boolean;
     mlHeatmap: boolean;
+    earthquakeEvents: boolean;
   };
   onToggleLayer: (layerKey: string) => void;
   onShowToast: (msg: string) => void;
@@ -73,6 +77,8 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   onSelectEvent,
   zoneMlRisk,
   heatmapPoints,
+  earthquakes,
+  earthquakeStatus,
   stressRainfall,
   activeLayers,
   onToggleLayer,
@@ -85,6 +91,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   const markersLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const trainingEventsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const sensorsLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const earthquakesLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const [basemap, setBasemap] = useState<GoogleEarthBasemap>('hybrid');
   const [heatmapRadius, setHeatmapRadius] = useState<number>(32);
@@ -148,6 +155,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
     markersLayerGroupRef.current = L.layerGroup().addTo(map);
     trainingEventsLayerGroupRef.current = L.layerGroup().addTo(map);
     sensorsLayerGroupRef.current = L.layerGroup().addTo(map);
+    earthquakesLayerGroupRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
     // Track zoom
@@ -363,6 +371,37 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
       marker.addTo(group);
     });
   }, [sensors, activeLayers.sensorNodes]);
+
+  // Render validated official NCS earthquake events.
+  useEffect(() => {
+    const map = mapRef.current;
+    const group = earthquakesLayerGroupRef.current;
+    if (!map || !group) return;
+
+    group.clearLayers();
+    if (!activeLayers.earthquakeEvents) return;
+
+    earthquakes.forEach((event) => {
+      const size = Math.max(12, Math.min(28, 8 + event.magnitude * 3));
+      const icon = L.divIcon({
+        className: 'earthquake-event-pin',
+        html: `<div style="width:${size}px;height:${size}px" class="rounded-full border-2 border-orange-200 bg-orange-500/80 shadow-[0_0_14px_rgba(249,115,22,0.8)] flex items-center justify-center text-[8px] font-black text-white">${event.magnitude.toFixed(1)}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      });
+      const marker = L.marker([event.latitude, event.longitude], { icon });
+      marker.bindTooltip(`
+        <div class="p-1.5 font-mono text-[10px] bg-slate-950 text-slate-100 border border-orange-400/80 rounded">
+          <b class="text-orange-300 block">NCS Earthquake M${event.magnitude.toFixed(1)}</b>
+          <div>${event.location}</div>
+          <div>${event.depth_km.toFixed(0)} km deep • ${event.status}</div>
+          <div>${new Date(event.event_time).toLocaleString()}</div>
+          <div class="text-slate-400">${earthquakeStatus}</div>
+        </div>
+      `, { direction: 'top', offset: [0, -size / 2] });
+      marker.addTo(group);
+    });
+  }, [earthquakes, earthquakeStatus, activeLayers.earthquakeEvents]);
 
   // Custom HTML5 Canvas ML Heatmap Layer Renderer
   useEffect(() => {
