@@ -1092,7 +1092,7 @@ Core project contribution areas include:
 - Frontend Development
 - API Integration
 - Application Development
-- System Testing
+- System Testing.
 
 ---
 
