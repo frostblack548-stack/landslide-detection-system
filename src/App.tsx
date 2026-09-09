@@ -300,6 +300,7 @@ export default function App() {
         isOpen={isFieldModalOpen}
         onClose={() => setIsFieldModalOpen(false)}
         onSubmitSuccess={triggerGlobalToast}
+        theme={theme}
       />
 
       {/* National Institutional Footer */}
