@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { OperationalModule, HazardZone } from '../types';
 import {
   Search,
@@ -18,6 +18,7 @@ interface TerraHomeProps {
   onNavigate: (module: OperationalModule) => void;
   zones: HazardZone[];
   theme: 'dark' | 'light';
+  selectedZone: HazardZone;
 }
 
 export const TerraHome: React.FC<TerraHomeProps> = ({
@@ -25,9 +26,14 @@ export const TerraHome: React.FC<TerraHomeProps> = ({
   onNavigate,
   zones,
   theme,
+  selectedZone,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(selectedZone.name);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    setSearchQuery(selectedZone.name);
+  }, [selectedZone.id, selectedZone.name]);
 
   const matchingZones = zones.filter(
     (z) =>
@@ -38,11 +44,13 @@ export const TerraHome: React.FC<TerraHomeProps> = ({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (matchingZones.length > 0) {
-      onCheckLocationRisk(matchingZones[0]);
+    const selectedMatch = zones.find((zone) => zone.name === searchQuery.trim()) ?? matchingZones[0];
+    if (selectedMatch) {
+      onCheckLocationRisk(selectedMatch);
     } else if (zones.length > 0) {
       onCheckLocationRisk(zones[0]);
     }
+    setShowSuggestions(false);
   };
 
   const highAndMedZones = zones.filter(
@@ -118,7 +126,7 @@ export const TerraHome: React.FC<TerraHomeProps> = ({
                     <div
                       key={zone.id}
                       onClick={() => {
-                        onCheckLocationRisk(zone);
+                        setSearchQuery(zone.name);
                         setShowSuggestions(false);
                       }}
                       className="px-4 py-2.5 hover:bg-emerald-500/20 cursor-pointer flex items-center justify-between border-b border-slate-800 text-xs sm:text-sm"
@@ -155,7 +163,10 @@ export const TerraHome: React.FC<TerraHomeProps> = ({
               <button
                 key={z.id}
                 type="button"
-                onClick={() => onCheckLocationRisk(z)}
+                onClick={() => {
+                  setSearchQuery(z.name);
+                  setShowSuggestions(false);
+                }}
                 className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono text-[11px] transition-all cursor-pointer"
               >
                 {z.name.split('(')[0].trim()}

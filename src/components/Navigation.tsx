@@ -10,6 +10,7 @@ import {
   Cpu,
   Info,
   PlayCircle,
+  Activity,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -52,6 +53,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Map,
       badge: 'GIS 3D',
       badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+    },
+    {
+      id: 'earthquake-monitor',
+      title: 'Earthquakes',
+      icon: Activity,
+      badge: 'NCS Live',
+      badgeColor: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
     },
     {
       id: 'risk-details',

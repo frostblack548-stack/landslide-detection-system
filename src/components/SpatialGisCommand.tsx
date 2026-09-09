@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   HazardZone,
   SensorNode,
@@ -6,6 +6,7 @@ import {
   HistoricalLandslideEvent,
   ZoneMlRiskEvaluation,
   MlHeatmapPoint,
+  EarthquakeEvent,
 } from '../types';
 import { HAZARD_ZONES, SENSOR_NODES, ASSET_URLS } from '../data/mockData';
 import { LandslideApi } from '../services/api';
@@ -37,6 +38,7 @@ import {
   Square,
   Navigation,
   ArrowRight,
+  Loader2,
 } from 'lucide-react';
 
 interface SpatialGisCommandProps {
@@ -90,12 +92,14 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     mlInference: true,
     trainingEvents: true,
     mlHeatmap: true,
+    earthquakeEvents: true,
   });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [is3DMode, setIs3DMode] = useState(false);
   const [mapZoom, setMapZoom] = useState(1);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isDispatching, setIsDispatching] = useState(false);
 
   const [zones, setZones] = useState<HazardZone[]>(HAZARD_ZONES);
   const [sensors, setSensors] = useState<SensorNode[]>(SENSOR_NODES);
@@ -104,6 +108,8 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
   const [zoneMlRisk, setZoneMlRisk] = useState<ZoneMlRiskEvaluation | null>(null);
   const [stressRainfall, setStressRainfall] = useState<number>(0);
   const [heatmapPoints, setHeatmapPoints] = useState<MlHeatmapPoint[]>([]);
+  const [earthquakes, setEarthquakes] = useState<EarthquakeEvent[]>([]);
+  const [earthquakeStatus, setEarthquakeStatus] = useState('Loading NCS feed...');
 
   useEffect(() => {
     let active = true;
@@ -128,7 +134,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     return () => {
       active = false;
     };
-  }, [selectedState, propSelectedZone]);
+  }, [selectedState]);
 
   // Live ML evaluation for the selected zone
   useEffect(() => {
@@ -158,31 +164,51 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     };
   }, [selectedState, stressRainfall]);
 
+  useEffect(() => {
+    const match = selectedZone.coords.match(/(-?\d+(?:\.\d+)?)[^,]*,\s*(-?\d+(?:\.\d+)?)/);
+    const latitude = match ? Number(match[1]) : undefined;
+    const longitude = match ? Number(match[2]) : undefined;
+    LandslideApi.getEarthquakes(latitude, longitude).then((response) => {
+      setEarthquakes(response.events);
+      setEarthquakeStatus(response.earthquake_data_available
+        ? `${response.events.length} NCS events in range`
+        : 'NCS feed temporarily unavailable');
+    });
+  }, [selectedZone.coords]);
+
   // Filter hazard zones according to state, search query, and risk level toggles
-  const filteredZones = zones.filter((z) => {
-    if (selectedState !== 'all' && z.state !== selectedState) return false;
-    if (!riskFilters.high && z.riskStatus.includes('CRITICAL')) return false;
-    if (!riskFilters.moderate && z.riskStatus.includes('ADVISORY')) return false;
-    if (!riskFilters.low && z.riskStatus.includes('NOMINAL')) return false;
-    if (
-      searchQuery.trim() !== '' &&
-      !z.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !z.corridor.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !z.state.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredZones = useMemo(
+    () =>
+      zones.filter((z) => {
+        if (selectedState !== 'all' && z.state !== selectedState) return false;
+        if (!riskFilters.high && z.riskStatus.includes('CRITICAL')) return false;
+        if (!riskFilters.moderate && z.riskStatus.includes('ADVISORY')) return false;
+        if (!riskFilters.low && z.riskStatus.includes('NOMINAL')) return false;
+        if (
+          normalizedSearchQuery !== '' &&
+          !z.name.toLowerCase().includes(normalizedSearchQuery) &&
+          !z.corridor.toLowerCase().includes(normalizedSearchQuery) &&
+          !z.state.toLowerCase().includes(normalizedSearchQuery)
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [zones, selectedState, riskFilters, normalizedSearchQuery]
+  );
 
   // Filter sensors
-  const filteredSensors =
-    selectedState === 'all'
-      ? sensors
-      : sensors.filter((s) => s.state === selectedState);
+  const filteredSensors = useMemo(
+    () => (selectedState === 'all' ? sensors : sensors.filter((s) => s.state === selectedState)),
+    [sensors, selectedState]
+  );
 
   // Filter historical events based on pastEvents checkbox
-  const visibleTrainingEvents = riskFilters.pastEvents ? trainingEvents : [];
+  const visibleTrainingEvents = useMemo(
+    () => (riskFilters.pastEvents ? trainingEvents : []),
+    [riskFilters.pastEvents, trainingEvents]
+  );
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -191,6 +217,12 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
 
   const handleDroneDispatch = () => {
     showToast(`Drone Reconnaissance Flight Quad-402 dispatched to coordinates ${selectedZone.coords}. Realtime optical telemetry stream initializing.`);
+  };
+
+  const handleStage3Evacuation = () => {
+    setIsDispatching(true);
+    showToast(`Evacuation protocol staged for ${selectedZone.name}. Opening dispatch coordination.`);
+    window.setTimeout(() => onNavigateToDispatch(selectedZone.id), 650);
   };
 
   const handleExportGeoJson = () => {
@@ -235,8 +267,41 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
         </div>
       )}
 
+      {/* Command header */}
+      <section className={`relative overflow-hidden rounded-2xl border p-5 sm:p-6 ${
+        isDark
+          ? 'border-cyan-400/20 bg-[radial-gradient(circle_at_85%_20%,rgba(34,211,238,0.16),transparent_32%),linear-gradient(120deg,#0d1c2d_0%,#0a1728_58%,#102b36_100%)]'
+          : 'border-cyan-200 bg-[radial-gradient(circle_at_85%_20%,rgba(6,182,212,0.12),transparent_32%),linear-gradient(120deg,#ffffff_0%,#f0fdfa_100%)] shadow-sm'
+      }`}>
+        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-cyan-300/15" />
+        <div className="absolute right-5 top-5 h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_5px_rgba(103,232,249,0.35)]" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 animate-pulse" />
+              Live geospatial command
+            </div>
+            <h1 className="max-w-2xl text-2xl font-black tracking-tight text-white sm:text-3xl">
+              Terrain intelligence, at a glance.
+            </h1>
+            <p className={`mt-2 max-w-xl text-sm leading-6 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              Monitor slope movement, rainfall pressure, and field telemetry across {selectedState === 'all' ? 'the national network' : selectedState}.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 text-[11px] font-mono">
+            <span className={`rounded-full border px-3 py-1.5 ${isDark ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              SYSTEM NOMINAL
+            </span>
+            <span className={`rounded-full border px-3 py-1.5 ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}>
+              SYNC 12s AGO
+            </span>
+          </div>
+        </div>
+      </section>
+
       {/* KPI Telemetry Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
         <div className={`border rounded-xl p-3 sm:p-3.5 relative overflow-hidden ${
           isDark ? 'bg-[#0d1c2d] border-[#1c2b3c]' : 'bg-white border-slate-200 shadow-sm'
         }`}>
@@ -496,6 +561,19 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
                   <Radio className="w-3.5 h-3.5 text-emerald-500" />
                   <span>IoT Sensor Nodes (148)</span>
                 </label>
+
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium group">
+                  <input
+                    type="checkbox"
+                    checked={activeLayers.earthquakeEvents}
+                    onChange={() =>
+                      setActiveLayers((p) => ({ ...p, earthquakeEvents: !p.earthquakeEvents }))
+                    }
+                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-400 cursor-pointer accent-orange-500"
+                  />
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-orange-400 bg-orange-500/30" />
+                  <span>Live NCS Earthquakes ({earthquakes.length})</span>
+                </label>
               </div>
             </div>
 
@@ -647,6 +725,8 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
               onSelectEvent={(evt) => setSelectedEvent(evt)}
               zoneMlRisk={zoneMlRisk}
               heatmapPoints={heatmapPoints}
+              earthquakes={earthquakes}
+              earthquakeStatus={earthquakeStatus}
               stressRainfall={stressRainfall}
               activeLayers={activeLayers}
               onToggleLayer={(key) =>
@@ -714,7 +794,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
                 <span className="text-amber-500 font-bold">
                   +{stressRainfall} mm{' '}
                   <span className="text-slate-400 font-normal">
-                    (Total: {(zoneMlRisk ? zoneMlRisk.actual_rainfall_3d + stressRainfall : 120 + stressRainfall).toFixed(1)} mm)
+                    (Total: {(zoneMlRisk ? zoneMlRisk.feature_summary.rainfall_3d_mm + stressRainfall : 120 + stressRainfall).toFixed(1)} mm)
                   </span>
                 </span>
               </div>
@@ -783,11 +863,14 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onNavigateToDispatch(selectedZone.id)}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all shadow-md shadow-red-600/20 flex items-center gap-1.5"
+                  onClick={handleStage3Evacuation}
+                  disabled={isDispatching}
+                  className="group relative isolate flex min-w-[185px] items-center justify-center gap-1.5 overflow-hidden rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-600/20 transition-all hover:-translate-y-0.5 hover:bg-red-500 hover:shadow-lg hover:shadow-red-600/30 active:translate-y-0 disabled:cursor-wait disabled:opacity-80"
                 >
-                  <ShieldAlert className="w-4 h-4" />
-                  <span>Stage 3 Evacuation</span>
+                  <span className={`absolute inset-y-0 left-0 -z-10 bg-red-500/80 transition-all duration-500 ${isDispatching ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+                  {isDispatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4 transition-transform group-hover:rotate-[-8deg]" />}
+                  <span>{isDispatching ? 'Opening Dispatch...' : 'Stage 3 Evacuation'}</span>
+                  {!isDispatching && <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />}
                 </button>
               </div>
             </div>
