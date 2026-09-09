@@ -1083,7 +1083,7 @@ The objective is to support improved landslide preparedness, risk awareness, and
 # Team Members:
 
 - B NITHIN CHANDRA GIT REPO: https://github.com/bnithinchandra-dotcom
-- 2
+- B DHANUSH GIT REPO: https://github.com/bondidhanush01-bit
 - 3
 - 4
 - 5
