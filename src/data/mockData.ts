@@ -14,7 +14,6 @@ export const ASSET_URLS = {
   awsRadarNode: '/assets/awsRadarNode.png',
   terrainOptical: '/assets/terrainOptical.png',
   primaryIncident: '/assets/primaryIncident.png',
-  primaryIncidentAlt: '/assets/primaryIncidentAlt.png',
   sohraPass: '/assets/sohraPass.png',
   jatingaRidge: '/assets/jatingaRidge.png',
   tupulNoney: '/assets/tupulNoney.png',
