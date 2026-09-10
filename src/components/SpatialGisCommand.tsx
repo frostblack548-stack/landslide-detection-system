@@ -113,8 +113,9 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
 
   useEffect(() => {
     let active = true;
-    LandslideApi.getHazardZones(selectedState).then((data) => {
-      if (active && data && data.length > 0) {
+    const controller = new AbortController();
+    LandslideApi.getHazardZones(selectedState, controller.signal).then((data) => {
+      if (data && data.length > 0) {
         setZones(data);
         if (!propSelectedZone) {
           setInternalSelectedZone(data[0]);
@@ -133,6 +134,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [selectedState]);
 
@@ -733,6 +735,8 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
                 setActiveLayers((prev: any) => ({ ...prev, [key]: !prev[key] }))
               }
               onShowToast={showToast}
+              is3DMode={is3DMode}
+              onToggle3D={() => setIs3DMode((previous) => !previous)}
             />
 
             {/* Bottom Status bar under map */}

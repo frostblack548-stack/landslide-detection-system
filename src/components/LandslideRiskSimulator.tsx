@@ -10,7 +10,6 @@ import {
   Play,
   RotateCcw,
   ShieldAlert,
-  Volume2,
   VolumeX,
   XCircle,
 } from 'lucide-react';
@@ -353,6 +352,22 @@ export function LandslideRiskSimulator({
     return sirenPlayer.subscribe(setSirenActive);
   }, []);
 
+  useEffect(() => {
+    if (!predictionResult) {
+      return;
+    }
+
+    const isHighRisk =
+      predictionResult.risk_level === 'HIGH' ||
+      predictionResult.risk_level === 'VERY_HIGH';
+
+    if (isHighRisk) {
+      sirenPlayer.start();
+    } else {
+      sirenPlayer.stop();
+    }
+  }, [predictionResult]);
+
 
   /*
    * Probability normalization.
@@ -462,6 +477,8 @@ export function LandslideRiskSimulator({
 
     setPredictionResult(null);
 
+    sirenPlayer.stop();
+
     setError(null);
 
     setFormData({
@@ -489,11 +506,8 @@ export function LandslideRiskSimulator({
   };
 
 
-  /*
-   * Toggle emergency siren.
-   */
-  const handleSirenToggle = () => {
-    sirenPlayer.toggle();
+  const handleSirenStop = () => {
+    sirenPlayer.stop();
   };
 
 
@@ -1314,31 +1328,20 @@ export function LandslideRiskSimulator({
                 <div className="mt-5">
 
                   <button
-                    onClick={handleSirenToggle}
+                    onClick={handleSirenStop}
+                    disabled={!sirenActive}
                     className={`w-full flex items-center justify-center gap-3 py-3 px-5 rounded-xl border font-bold transition-all ${
                       sirenActive
-                        ? 'bg-red-600 border-red-400 text-white animate-pulse'
-                        : predictionResult.risk_level === 'VERY_HIGH'
-                        ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/50 text-red-400'
+                        ? 'bg-red-600 border-red-400 text-white animate-pulse hover:bg-red-700'
                         : isDark
-                        ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
-                        : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+                        ? 'bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed'
+                        : 'bg-slate-100 border-slate-300 text-slate-400 cursor-not-allowed'
                     }`}
                   >
 
-                    {sirenActive ? (
-                      <>
-                        <VolumeX className="w-5 h-5" />
+                    <VolumeX className="w-5 h-5" />
 
-                        SILENCE EMERGENCY SIREN
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-5 h-5" />
-
-                        ACTIVATE EMERGENCY SIREN
-                      </>
-                    )}
+                    STOP EMERGENCY SIREN
 
                   </button>
 
