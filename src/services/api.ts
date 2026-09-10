@@ -77,7 +77,7 @@ export const LandslideApi = {
 
   // Layer 1: Hazard Zones & Susceptibility
   async getHazardZones(state?: NerState, signal?: AbortSignal): Promise<HazardZone[]> {
-    const query = state && state !== 'all' ? `?state=${encodeURIComponent(state)}` : ''; 
+    const query = state && state !== 'all' ? `?state=${encodeURIComponent(state)}` : '';
     const fallback =
       state && state !== 'all'
         ? HAZARD_ZONES.filter((z) => z.state === state)
