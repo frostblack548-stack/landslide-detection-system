@@ -76,13 +76,13 @@ export const LandslideApi = {
   },
 
   // Layer 1: Hazard Zones & Susceptibility
-  async getHazardZones(state?: NerState): Promise<HazardZone[]> {
-    const query = state && state !== 'all' ? `?state=${encodeURIComponent(state)}` : '';
+  async getHazardZones(state?: NerState, signal?: AbortSignal): Promise<HazardZone[]> {
+    const query = state && state !== 'all' ? `?state=${encodeURIComponent(state)}` : ''; 
     const fallback =
       state && state !== 'all'
         ? HAZARD_ZONES.filter((z) => z.state === state)
         : HAZARD_ZONES;
-    return fetchJson<HazardZone[]>(`/api/zones${query}`, undefined, fallback);
+    return fetchJson<HazardZone[]>(`/api/zones${query}`, { signal }, fallback);
   },
 
   // Layer 2: Temporal LSTM Prediction

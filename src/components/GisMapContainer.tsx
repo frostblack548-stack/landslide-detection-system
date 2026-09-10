@@ -51,6 +51,8 @@ interface GisMapContainerProps {
   };
   onToggleLayer: (layerKey: string) => void;
   onShowToast: (msg: string) => void;
+  is3DMode: boolean;
+  onToggle3D: () => void;
 }
 
 // Coordinate parser for "27.5312° N, 88.5134° E"
@@ -83,6 +85,8 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   activeLayers,
   onToggleLayer,
   onShowToast,
+  is3DMode,
+  onToggle3D,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const canvasOverlayRef = useRef<HTMLCanvasElement>(null);
@@ -99,7 +103,6 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   const [showSettingsPanel, setShowSettingsPanel] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [currentZoom, setCurrentZoom] = useState<number>(9);
-  const [is3DViewOpen, setIs3DViewOpen] = useState<boolean>(false);
 
   // Google Earth tile URLs (high-speed Google tile servers)
   const tileConfigs = useMemo(() => ({
@@ -565,11 +568,11 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
         style={{ width: '100%', height: '100%' }}
       />
 
-      {is3DViewOpen && (
+      {is3DMode && (
         <ThreeDMapView
           selectedZone={selectedZone}
           zones={zones}
-          onClose={() => setIs3DViewOpen(false)}
+          onClose={onToggle3D}
         />
       )}
 
@@ -615,7 +618,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
         </button>
 
         <button
-          onClick={() => setIs3DViewOpen(true)}
+          onClick={onToggle3D}
           className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
             basemap === '3d_earth'
               ? 'bg-amber-400 text-slate-950 shadow ring-2 ring-amber-300'

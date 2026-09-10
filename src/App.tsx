@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { OperationalModule, NerState, HazardZone } from './types';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
@@ -40,6 +40,7 @@ export default function App() {
   const [selectedZone, setSelectedZone] = useState<HazardZone>(HAZARD_ZONES[0]);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [globalToast, setGlobalToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isSirenActive, setIsSirenActive] = useState<boolean>(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
@@ -53,7 +54,8 @@ export default function App() {
   // Fetch zones from API while maintaining default fallback
   useEffect(() => {
     let active = true;
-    LandslideApi.getHazardZones(selectedState).then((data) => {
+    const controller = new AbortController();
+    LandslideApi.getHazardZones(selectedState, controller.signal).then((data) => {
       if (active && data && data.length > 0) {
         setZones(data);
         setSelectedZone(data[0]);
@@ -61,6 +63,7 @@ export default function App() {
     });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [selectedState]);
 
@@ -75,9 +78,23 @@ export default function App() {
   };
 
   const triggerGlobalToast = (msg: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setGlobalToast(msg);
-    setTimeout(() => setGlobalToast(null), 4000);
+    toastTimerRef.current = setTimeout(() => {
+      setGlobalToast(null);
+      toastTimerRef.current = null;
+    }, 4000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     return sirenPlayer.subscribe(setIsSirenActive);
