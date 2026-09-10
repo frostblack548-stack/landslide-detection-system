@@ -19,9 +19,10 @@ EVENTS_DATASET_FILE = BASE_DIR / "data" / "landslides" / "NER_Landslide_Events.c
 
 # Pre-load and cache representative historical training events
 CACHED_TRAINING_EVENTS = []
+CACHED_TRAINING_EVENT_TIMELINE = []
 
 def load_training_events():
-    global CACHED_TRAINING_EVENTS
+    global CACHED_TRAINING_EVENTS, CACHED_TRAINING_EVENT_TIMELINE
     if CACHED_TRAINING_EVENTS:
         return CACHED_TRAINING_EVENTS
 
@@ -29,7 +30,10 @@ def load_training_events():
     if ML_DATASET_FILE.exists():
         try:
             df = pd.read_csv(ML_DATASET_FILE)
-            positives = df[df["label"] == 1].dropna(subset=["latitude", "longitude"])
+            positives = df[
+                (df["label"] == 1)
+                & df["event_date"].notna()
+            ].dropna(subset=["latitude", "longitude"])
             
             # Map lat/lon to approximate NER states and percentage canvas coordinates
             def resolve_state(lat: float, lon: float) -> str:
@@ -49,10 +53,10 @@ def load_training_events():
                     return "tripura"
                 return "assam"
 
-            # Sample 60 well-distributed positive events
-            sample_df = positives.sample(min(60, len(positives)), random_state=42)
-            
-            for idx, row in sample_df.iterrows():
+            for idx, row in positives.iterrows():
+                event_date = str(row.get("event_date", ""))
+                if not event_date[:4].isdigit():
+                    continue
                 lat = float(row["latitude"])
                 lon = float(row["longitude"])
                 state = resolve_state(lat, lon)
@@ -71,7 +75,7 @@ def load_training_events():
                     "latitude": round(lat, 4),
                     "longitude": round(lon, 4),
                     "state": state,
-                    "event_date": str(row.get("event_date", "Historical Monsoon Event")),
+                    "event_date": event_date,
                     "rainfall_3d": round(float(row.get("rainfall_3d", 120.0)), 1),
                     "slope": round(float(row.get("slope", 32.0)), 1),
                     "elevation": round(float(row.get("elevation", 950.0))),
@@ -82,6 +86,15 @@ def load_training_events():
                     "dataset_source": "NER_Landslide_Rainfall_ML_Dataset_654.csv",
                     "type": "verified_historical_landslide"
                 })
+
+            timeline = {}
+            for event in events:
+                year = int(event["event_date"][:4])
+                timeline[year] = timeline.get(year, 0) + 1
+            CACHED_TRAINING_EVENT_TIMELINE = [
+                {"year": year, "count": timeline[year]}
+                for year in sorted(timeline)
+            ]
         except Exception as e:
             print(f"[GIS] Warning loading training events: {e}")
 
@@ -115,16 +128,43 @@ def get_hazard_zones(
 
 @router.get("/historical-training-events")
 def get_historical_training_events(
-    state: Optional[str] = Query(None, description="Filter by NER state")
+    state: Optional[str] = Query(None, description="Filter by NER state"),
+    year_from: Optional[str] = Query(None, description="First event year, inclusive"),
+    year_to: Optional[str] = Query(None, description="Last event year, inclusive")
 ):
     """
     Returns real, verified historical landslide events from the ML training dataset
     to project directly onto the GIS canvas.
     """
     events = load_training_events()
-    if state and state.lower() != "all":
-        events = [e for e in events if e["state"] == state.lower()]
-    return events
+    try:
+        if state and state.lower() != "all":
+            events = [e for e in events if e["state"] == state.lower()]
+        parsed_year_from = int(year_from) if year_from is not None else None
+        parsed_year_to = int(year_to) if year_to is not None else None
+        if parsed_year_from is not None or parsed_year_to is not None:
+            lower = parsed_year_from if parsed_year_from is not None else -float("inf")
+            upper = parsed_year_to if parsed_year_to is not None else float("inf")
+            if lower <= upper:
+                events = [
+                    e for e in events
+                    if lower <= int(str(e.get("event_date", ""))[:4]) <= upper
+                ]
+        return events
+    except Exception as exc:
+        print(f"[GIS] Warning filtering historical training events: {exc}")
+        return load_training_events()
+
+
+@router.get("/historical-training-events/timeline")
+def get_historical_training_events_timeline():
+    """Return event counts grouped by year for the historical replay control."""
+    try:
+        load_training_events()
+        return CACHED_TRAINING_EVENT_TIMELINE
+    except Exception as exc:
+        print(f"[GIS] Warning loading historical event timeline: {exc}")
+        return []
 
 
 @router.get("/ml-heatmap-points")

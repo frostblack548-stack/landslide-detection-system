@@ -11,6 +11,11 @@ import {
 import { HAZARD_ZONES, SENSOR_NODES, ASSET_URLS } from '../data/mockData';
 import { LandslideApi } from '../services/api';
 import { GisMapContainer } from './GisMapContainer';
+import { HillsRegion } from '../data/hillsData';
+import {
+  HistoricalReplayTimeline,
+  HistoricalReplayRange,
+} from './HistoricalReplayTimeline';
 import {
   Layers,
   Crosshair,
@@ -50,6 +55,7 @@ interface SpatialGisCommandProps {
   theme?: 'dark' | 'light';
   selectedZone?: HazardZone;
   onSelectZone?: (zone: HazardZone) => void;
+  selectedHillRegion?: HillsRegion | null;
 }
 
 export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
@@ -61,6 +67,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
   theme = 'dark',
   selectedZone: propSelectedZone,
   onSelectZone: propOnSelectZone,
+  selectedHillRegion = null,
 }) => {
   const [internalSelectedZone, setInternalSelectedZone] = useState<HazardZone>(HAZARD_ZONES[0]);
   const selectedZone = propSelectedZone || internalSelectedZone;
@@ -104,6 +111,9 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
   const [zones, setZones] = useState<HazardZone[]>(HAZARD_ZONES);
   const [sensors, setSensors] = useState<SensorNode[]>(SENSOR_NODES);
   const [trainingEvents, setTrainingEvents] = useState<HistoricalLandslideEvent[]>([]);
+  const [yearCounts, setYearCounts] = useState<{ year: number; count: number }[]>([]);
+  const [historicalTimelineRange, setHistoricalTimelineRange] =
+    useState<HistoricalReplayRange | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<HistoricalLandslideEvent | null>(null);
   const [zoneMlRisk, setZoneMlRisk] = useState<ZoneMlRiskEvaluation | null>(null);
   const [stressRainfall, setStressRainfall] = useState<number>(0);
@@ -130,6 +140,11 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
     LandslideApi.getHistoricalTrainingEvents(selectedState).then((events) => {
       if (active && events) {
         setTrainingEvents(events);
+      }
+    });
+    LandslideApi.getHistoricalTrainingEventsTimeline().then((timeline) => {
+      if (active && timeline) {
+        setYearCounts(timeline);
       }
     });
     return () => {
@@ -208,9 +223,22 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
 
   // Filter historical events based on pastEvents checkbox
   const visibleTrainingEvents = useMemo(
-    () => (riskFilters.pastEvents ? trainingEvents : []),
-    [riskFilters.pastEvents, trainingEvents]
+    () => {
+      if (!riskFilters.pastEvents) return [];
+      if (!historicalTimelineRange) return trainingEvents;
+
+      return trainingEvents.filter((event) => {
+        const yearMatch = event.event_date.match(/^(\d{4})/);
+        if (!yearMatch) return false;
+        const year = Number(yearMatch[1]);
+        return year >= historicalTimelineRange.from && year <= historicalTimelineRange.to;
+      });
+    },
+    [historicalTimelineRange, riskFilters.pastEvents, trainingEvents]
   );
+
+  const timelineMinYear = yearCounts[0]?.year ?? 2009;
+  const timelineMaxYear = yearCounts[yearCounts.length - 1]?.year ?? 2022;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -301,6 +329,25 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
           </div>
         </div>
       </section>
+
+      {selectedHillRegion && (
+        <section className={`rounded-xl border px-4 py-3 ${isDark ? 'border-cyan-400/25 bg-cyan-500/10' : 'border-cyan-200 bg-cyan-50'}`}>
+          <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-cyan-400">
+            Selected Region
+          </div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-base font-black">{selectedHillRegion.name}</span>
+            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              {selectedHillRegion.state}
+            </span>
+          </div>
+          <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            {selectedHillRegion.coordinatesVerified
+              ? 'Verified representative coordinates loaded. The existing GIS map is focusing this region while preserving all active layers.'
+              : 'GIS focus is currently unavailable because verified geographic coordinates or boundaries have not been added for this region. Existing map layers and current viewport are preserved.'}
+          </p>
+        </section>
+      )}
 
       {/* KPI Telemetry Strip */}
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
@@ -538,6 +585,16 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
                   <span>Historical Data (Events)</span>
                 </label>
 
+                {activeLayers.trainingEvents && (
+                  <HistoricalReplayTimeline
+                    minYear={timelineMinYear}
+                    maxYear={timelineMaxYear}
+                    yearCounts={yearCounts}
+                    value={historicalTimelineRange}
+                    onChange={setHistoricalTimelineRange}
+                  />
+                )}
+
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium group">
                   <input
                     type="checkbox"
@@ -737,6 +794,17 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
               onShowToast={showToast}
               is3DMode={is3DMode}
               onToggle3D={() => setIs3DMode((previous) => !previous)}
+              focusCoordinates={
+                selectedHillRegion?.coordinatesVerified &&
+                selectedHillRegion.latitude !== undefined &&
+                selectedHillRegion.longitude !== undefined
+                  ? {
+                      latitude: selectedHillRegion.latitude,
+                      longitude: selectedHillRegion.longitude,
+                      zoom: 10,
+                    }
+                  : undefined
+              }
             />
 
             {/* Bottom Status bar under map */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { OperationalModule } from '../types';
 import {
   Home,
@@ -11,6 +11,9 @@ import {
   Info,
   PlayCircle,
   Activity,
+  ChevronLeft,
+  ChevronRight,
+  Mountain,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -27,6 +30,53 @@ export const Navigation: React.FC<NavigationProps> = ({
   theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeButtonRef = useRef<HTMLButtonElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    setCanScrollLeft(element.scrollLeft > 1);
+    setCanScrollRight(element.scrollLeft + element.clientWidth < element.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    updateScrollState();
+    element.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateScrollState)
+      : null;
+    resizeObserver?.observe(element);
+
+    return () => {
+      element.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+      resizeObserver?.disconnect();
+    };
+  }, [updateScrollState]);
+
+  useEffect(() => {
+    activeButtonRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'nearest',
+    });
+    updateScrollState();
+  }, [activeModule, updateScrollState]);
+
+  const scrollNavigation = (direction: -1 | 1) => {
+    scrollRef.current?.scrollBy({
+      left: direction * Math.max(scrollRef.current.clientWidth * 0.72, 220),
+      behavior: 'smooth',
+    });
+  };
 
   const primaryModules: {
     id: OperationalModule;
@@ -90,6 +140,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
     },
     {
+      id: 'hills-regions',
+      title: 'Hills & Mountain Regions',
+      icon: Mountain,
+      badge: 'NER',
+      badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+    },
+    {
       id: 'about',
       title: 'About & ML',
       icon: Cpu,
@@ -105,8 +162,34 @@ export const Navigation: React.FC<NavigationProps> = ({
       }`}
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between overflow-x-auto no-scrollbar py-2 gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 py-2 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => scrollNavigation(-1)}
+            disabled={!canScrollLeft}
+            aria-label="Scroll navigation left"
+            className={`shrink-0 rounded-lg border p-1.5 transition-colors ${
+              canScrollLeft
+                ? isDark
+                  ? 'border-slate-700 bg-slate-900/70 text-slate-200 hover:bg-slate-800'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                : 'cursor-not-allowed border-transparent text-slate-600 opacity-50'
+            }`}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <div
+            ref={scrollRef}
+            onWheel={(event) => {
+              if (event.shiftKey && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                event.currentTarget.scrollLeft += event.deltaY;
+                event.preventDefault();
+              }
+            }}
+            className="min-w-0 flex-1 overflow-x-auto no-scrollbar scroll-smooth"
+          >
+            <div className="flex w-max items-center gap-1.5 sm:gap-2">
             {primaryModules.map((m) => {
               const Icon = m.icon;
               // Map legacy IDs to canonical nav items
@@ -122,6 +205,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               return (
                 <button
                   key={m.id}
+                  ref={isActive ? activeButtonRef : undefined}
                   onClick={() => onChangeModule(m.id)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all relative cursor-pointer whitespace-nowrap border ${
                     isActive
@@ -146,7 +230,24 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </button>
               );
             })}
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => scrollNavigation(1)}
+            disabled={!canScrollRight}
+            aria-label="Scroll navigation right"
+            className={`shrink-0 rounded-lg border p-1.5 transition-colors ${
+              canScrollRight
+                ? isDark
+                  ? 'border-slate-700 bg-slate-900/70 text-slate-200 hover:bg-slate-800'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                : 'cursor-not-allowed border-transparent text-slate-600 opacity-50'
+            }`}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
 
           {/* Quick Launcher for ML Sandbox */}
           <div className="hidden lg:flex items-center gap-2 border-l pl-3 border-slate-700 dark:border-slate-800">

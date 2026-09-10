@@ -53,6 +53,11 @@ interface GisMapContainerProps {
   onShowToast: (msg: string) => void;
   is3DMode: boolean;
   onToggle3D: () => void;
+  focusCoordinates?: {
+    latitude: number;
+    longitude: number;
+    zoom?: number;
+  };
 }
 
 // Coordinate parser for "27.5312° N, 88.5134° E"
@@ -87,6 +92,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   onShowToast,
   is3DMode,
   onToggle3D,
+  focusCoordinates,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const canvasOverlayRef = useRef<HTMLCanvasElement>(null);
@@ -202,6 +208,16 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
       easeLinearity: 0.25,
     });
   }, [activeZoneCoords]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focusCoordinates) return;
+    map.flyTo(
+      [focusCoordinates.latitude, focusCoordinates.longitude],
+      focusCoordinates.zoom ?? 10,
+      { duration: 1.2, easeLinearity: 0.25 }
+    );
+  }, [focusCoordinates?.latitude, focusCoordinates?.longitude, focusCoordinates?.zoom]);
 
   // Render Hazard Zone Pins
   useEffect(() => {

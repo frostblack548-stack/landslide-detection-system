@@ -348,7 +348,7 @@ flowchart TD
     M --> O
     N --> O
 
-    O --> P[Extra Trees Classifier]
+      O --> P[Terrain + Rainfall Ensemble]
     P --> Q[FastAPI Backend]
     Q --> R[TerraGuard Application]
 
@@ -705,15 +705,23 @@ The final dataset was processed to remove invalid and duplicate records and to a
 
 # Machine Learning Model
 
-## Extra Trees Classifier
+## Terrain + Rainfall Ensemble
 
-The established machine learning model for the TerraGuard pipeline is:
+The prediction pipeline combines two complementary models:
 
 ```text
-ExtraTreesClassifier
+Terrain model: ExtraTreesClassifier
+Rainfall model: RandomForestClassifier
 ```
 
-The model was selected for the structured environmental and geospatial feature set used in the project.
+The terrain model is trained from the 18,109-record NER labeled dataset. After
+missing-value and duplicate removal, 18,033 records are used for training and
+evaluation. The rainfall model remains trained on the 654-record dataset that
+contains complete 1-day, 3-day, 7-day, 15-day, and 30-day rainfall windows.
+
+At inference time, the terrain probability contributes 70% and the rainfall
+probability contributes 30%. This uses the larger terrain inventory without
+inventing rainfall values for records that do not contain them.
 
 Relevant characteristics include:
 
