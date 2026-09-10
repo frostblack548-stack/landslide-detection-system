@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
-import { ChevronDown, Layers3, Map, X } from 'lucide-react';
-import { HazardZone } from '../types';
+import { ChevronDown, Layers3, Map, Radio, X } from 'lucide-react';
+import { HazardZone, SensorNode } from '../types';
+import { HillsRegion } from '../data/hillsData';
 
 interface ThreeDMapViewProps {
   selectedZone: HazardZone;
   zones: HazardZone[];
+  sensors?: SensorNode[];
+  selectedHillRegion?: HillsRegion | null;
   onClose: () => void;
 }
 
@@ -20,9 +23,25 @@ function parseCoordinates(coordStr: string): [number, number] {
   return [27.5312, 88.5134];
 }
 
+function isWithinRegion(
+  coordinates: [number, number],
+  region: HillsRegion,
+  radiusDegrees = 2.25
+) {
+  if (!region.coordinatesVerified || region.latitude === undefined || region.longitude === undefined) {
+    return true;
+  }
+
+  const latitudeDelta = coordinates[0] - region.latitude;
+  const longitudeDelta = (coordinates[1] - region.longitude) * Math.cos((region.latitude * Math.PI) / 180);
+  return Math.sqrt(latitudeDelta ** 2 + longitudeDelta ** 2) <= radiusDegrees;
+}
+
 export const ThreeDMapView: React.FC<ThreeDMapViewProps> = ({
   selectedZone,
   zones,
+  sensors = [],
+  selectedHillRegion = null,
   onClose,
 }) => {
   const selectedCoordinates = useMemo(
@@ -30,10 +49,24 @@ export const ThreeDMapView: React.FC<ThreeDMapViewProps> = ({
     [selectedZone.coords]
   );
 
+  const filteredZones = useMemo(
+    () => selectedHillRegion
+      ? zones.filter((zone) => isWithinRegion(parseCoordinates(zone.coords), selectedHillRegion))
+      : zones,
+    [selectedHillRegion, zones]
+  );
+
+  const filteredSensors = useMemo(
+    () => selectedHillRegion
+      ? sensors.filter((sensor) => isWithinRegion(parseCoordinates(sensor.coordinates), selectedHillRegion))
+      : sensors,
+    [selectedHillRegion, sensors]
+  );
+
   const zoneMarkers = useMemo(() => {
     const [selectedLatitude, selectedLongitude] = selectedCoordinates;
 
-    return zones.map((zone) => {
+    return filteredZones.map((zone) => {
       const [latitude, longitude] = parseCoordinates(zone.coords);
       const left = 50 + (longitude - selectedLongitude) * 30;
       const top = 50 - (latitude - selectedLatitude) * 30;
@@ -44,7 +77,22 @@ export const ThreeDMapView: React.FC<ThreeDMapViewProps> = ({
         top: Math.min(82, Math.max(18, top)),
       };
     });
-  }, [selectedCoordinates, zones]);
+  }, [filteredZones, selectedCoordinates]);
+
+  const sensorMarkers = useMemo(() => {
+    const [selectedLatitude, selectedLongitude] = selectedCoordinates;
+
+    return filteredSensors.map((sensor) => {
+      const [latitude, longitude] = parseCoordinates(sensor.coordinates);
+      return {
+        sensor,
+        left: Math.min(92, Math.max(8, 50 + (longitude - selectedLongitude) * 30)),
+        top: Math.min(82, Math.max(18, 50 - (latitude - selectedLatitude) * 30)),
+      };
+    });
+  }, [filteredSensors, selectedCoordinates]);
+
+  const criticalCount = filteredZones.filter((zone) => zone.isCritical).length;
 
   return (
     <div className="absolute inset-0 z-30 overflow-hidden bg-[#06121f] text-white">
@@ -71,6 +119,16 @@ export const ThreeDMapView: React.FC<ThreeDMapViewProps> = ({
               </div>
             </div>
           ))}
+          {sensorMarkers.map(({ sensor, left, top }) => (
+            <div
+              key={sensor.id}
+              className="absolute -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${left}%`, top: `${top}%` }}
+              title={`${sensor.name} telemetry`}
+            >
+              <div className="h-2.5 w-2.5 rounded-full border border-white bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,.9)]" />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -80,10 +138,24 @@ export const ThreeDMapView: React.FC<ThreeDMapViewProps> = ({
             <Layers3 className="h-4 w-4" />
             3D Terrain Analysis
           </div>
-          <div className="mt-1 text-sm font-semibold text-white">{selectedZone.name}</div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
-            {selectedCoordinates[0].toFixed(4)}° N, {selectedCoordinates[1].toFixed(4)}° E
+          <div className="mt-1 text-sm font-semibold text-white">
+            {selectedHillRegion?.coordinatesVerified ? selectedHillRegion.name : selectedZone.name}
           </div>
+          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
+            {selectedHillRegion?.coordinatesVerified && selectedHillRegion.latitude !== undefined && selectedHillRegion.longitude !== undefined
+              ? `${selectedHillRegion.latitude.toFixed(4)}° N, ${selectedHillRegion.longitude.toFixed(4)}° E`
+              : `${selectedCoordinates[0].toFixed(4)}° N, ${selectedCoordinates[1].toFixed(4)}° E`}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-mono text-slate-300">
+            <span className="rounded border border-red-300/20 bg-red-500/10 px-1.5 py-0.5">{criticalCount} HIGH</span>
+            <span className="rounded border border-cyan-300/20 bg-cyan-500/10 px-1.5 py-0.5">{filteredZones.length} ZONES</span>
+            <span className="flex items-center gap-1 rounded border border-cyan-300/20 bg-cyan-500/10 px-1.5 py-0.5"><Radio className="h-3 w-3" />{filteredSensors.length} TELEMETRY</span>
+          </div>
+          {selectedHillRegion && !selectedHillRegion.coordinatesVerified && (
+            <div className="mt-2 max-w-xs text-[10px] leading-4 text-slate-400">
+              Region-specific terrain filtering is unavailable; showing the existing terrain view.
+            </div>
+          )}
         </div>
         <button
           type="button"

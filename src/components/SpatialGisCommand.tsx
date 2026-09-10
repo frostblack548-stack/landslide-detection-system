@@ -794,6 +794,7 @@ export const SpatialGisCommand: React.FC<SpatialGisCommandProps> = ({
               onShowToast={showToast}
               is3DMode={is3DMode}
               onToggle3D={() => setIs3DMode((previous) => !previous)}
+              selectedHillRegion={selectedHillRegion}
               focusCoordinates={
                 selectedHillRegion?.coordinatesVerified &&
                 selectedHillRegion.latitude !== undefined &&

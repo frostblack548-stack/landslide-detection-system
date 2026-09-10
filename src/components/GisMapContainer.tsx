@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ThreeDMapView } from './ThreeDMapView';
+import { HillsRegion } from '../data/hillsData';
 
 export type GoogleEarthBasemap = 'satellite' | 'hybrid' | 'terrain' | '3d_earth';
 
@@ -53,6 +54,7 @@ interface GisMapContainerProps {
   onShowToast: (msg: string) => void;
   is3DMode: boolean;
   onToggle3D: () => void;
+  selectedHillRegion?: HillsRegion | null;
   focusCoordinates?: {
     latitude: number;
     longitude: number;
@@ -92,6 +94,7 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
   onShowToast,
   is3DMode,
   onToggle3D,
+  selectedHillRegion = null,
   focusCoordinates,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -588,6 +591,8 @@ export const GisMapContainer: React.FC<GisMapContainerProps> = ({
         <ThreeDMapView
           selectedZone={selectedZone}
           zones={zones}
+          sensors={sensors}
+          selectedHillRegion={selectedHillRegion}
           onClose={onToggle3D}
         />
       )}
