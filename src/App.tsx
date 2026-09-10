@@ -11,6 +11,7 @@ import { TerraHome } from './components/TerraHome';
 import { FieldReportModal } from './components/FieldReportModal';
 import { sirenPlayer } from './utils/audioSiren';
 import { HAZARD_ZONES, ASSET_URLS } from './data/mockData';
+import { HILLS_AND_MOUNTAIN_REGIONS, HillsRegion } from './data/hillsData';
 import { LandslideApi } from './services/api';
 import { PlusCircle, VolumeX, Zap } from 'lucide-react';
 
@@ -26,6 +27,7 @@ const BroadcastAndDispatch = lazy(() => import('./components/BroadcastAndDispatc
 const MlPipelineCommand = lazy(() => import('./components/MlPipelineCommand').then((module) => ({ default: module.MlPipelineCommand })));
 const LandslideRiskSimulator = lazy(() => import('./components/LandslideRiskSimulator'));
 const EarthquakeMonitor = lazy(() => import('./components/EarthquakeMonitor').then((module) => ({ default: module.EarthquakeMonitor })));
+const HillsMountainRegions = lazy(() => import('./components/HillsMountainRegions'));
 
 const ModuleLoadingFallback = () => (
   <div className="flex min-h-[240px] items-center justify-center text-xs font-mono text-slate-400">
@@ -38,6 +40,7 @@ export default function App() {
   const [selectedState, setSelectedState] = useState<NerState>('all');
   const [zones, setZones] = useState<HazardZone[]>(HAZARD_ZONES);
   const [selectedZone, setSelectedZone] = useState<HazardZone>(HAZARD_ZONES[0]);
+  const [selectedHillRegion, setSelectedHillRegion] = useState<HillsRegion | null>(null);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [globalToast, setGlobalToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,6 +114,46 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSirenActive]);
 
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const historyState = event.state as {
+        module?: OperationalModule;
+        selectedHillRegionId?: string;
+      } | null;
+      const region = historyState?.selectedHillRegionId
+        ? HILLS_AND_MOUNTAIN_REGIONS.find(
+            (item) => item.id === historyState.selectedHillRegionId
+          ) ?? null
+        : null;
+
+      if (historyState?.module === 'hills-regions') {
+        setSelectedHillRegion(region);
+        setActiveModule('hills-regions');
+      } else if (historyState?.module === 'risk-map') {
+        setSelectedHillRegion(region);
+        setActiveModule('risk-map');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateFromHillsToRiskMap = (region: HillsRegion) => {
+    const historyState = {
+      module: 'hills-regions' as const,
+      selectedHillRegionId: region.id,
+    };
+    window.history.replaceState(historyState, '', window.location.href);
+    window.history.pushState(
+      { module: 'risk-map' as const, selectedHillRegionId: region.id },
+      '',
+      window.location.href
+    );
+    setSelectedHillRegion(region);
+    setActiveModule('risk-map');
+  };
+
   const isDark = theme === 'dark';
 
   return (
@@ -182,6 +225,7 @@ export default function App() {
                 setSelectedZone(z);
                 setActiveModule('risk-details');
               }}
+              selectedHillRegion={selectedHillRegion}
               theme={theme}
             />
           </div>
@@ -283,6 +327,13 @@ export default function App() {
               }}
             />
           </div>
+        )}
+
+        {activeModule === 'hills-regions' && (
+          <HillsMountainRegions
+            theme={theme}
+            onNavigateToMap={navigateFromHillsToRiskMap}
+          />
         )}
         </Suspense>
       </main>

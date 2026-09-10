@@ -111,6 +111,8 @@ class WeatherService:
                 f"?latitude={station['lat']}&longitude={station['lon']}"
                 f"&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m"
                 f"&hourly=precipitation,soil_moisture_0_to_1cm,soil_moisture_1_to_3cm"
+                f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max"
+                f"&timezone=auto"
                 f"&forecast_days=3"
             )
             resp = requests.get(url, timeout=5)
@@ -118,6 +120,18 @@ class WeatherService:
                 json_data = resp.json()
                 current = json_data.get("current", {})
                 hourly = json_data.get("hourly", {})
+                daily = json_data.get("daily", {})
+
+                forecast = []
+                for index, date in enumerate(daily.get("time", [])[:3]):
+                    forecast.append({
+                        "date": date,
+                        "temperature_max_c": daily.get("temperature_2m_max", [None])[index],
+                        "temperature_min_c": daily.get("temperature_2m_min", [None])[index],
+                        "precipitation_mm": daily.get("precipitation_sum", [None])[index],
+                        "weather_code": daily.get("weather_code", [None])[index],
+                        "wind_speed_max_kmh": daily.get("wind_speed_10m_max", [None])[index],
+                    })
                 
                 # Extract soil moisture
                 sm_0_1 = hourly.get("soil_moisture_0_to_1cm", [0.38])
@@ -148,7 +162,8 @@ class WeatherService:
                     "radar_status": "ONLINE (GSAT-7A Locked)",
                     "bhuvan_satellite_tile": station["bhuvan_tile"],
                     "is_live_feed": True,
-                    "last_updated": current.get("time", "Just now")
+                    "last_updated": current.get("time", "Just now"),
+                    "forecast": forecast,
                 }
 
                 self._cache[state_key] = {"timestamp": now, "data": data}
@@ -177,7 +192,8 @@ class WeatherService:
             "radar_status": "ONLINE (IMD Telemetry Linked)",
             "bhuvan_satellite_tile": station["bhuvan_tile"],
             "is_live_feed": False,
-            "last_updated": "Cached Baseline"
+            "last_updated": "Cached Baseline",
+            "forecast": [],
         }
         return fallback_data
 

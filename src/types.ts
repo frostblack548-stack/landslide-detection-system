@@ -12,7 +12,8 @@ export type OperationalModule =
   | 'crowdsource-cv-verification'
   | 'emergency-broadcast-and-dispatch'
   | 'ml-models-pipeline'
-  | 'risk-simulator';
+  | 'risk-simulator'
+  | 'hills-regions';
 
 export type NerState =
   | 'all'
@@ -178,6 +179,13 @@ export interface PredictionResponse {
   action_code?: string;
   input_features: PredictionRequest;
   model?: string;
+  model_details?: {
+    terrain_probability: number | null;
+    rainfall_probability: number;
+    terrain_weight: number;
+    rainfall_weight: number;
+    terrain_records: number;
+  };
 }
 
 export interface MlPredictionInput {

@@ -33,6 +33,45 @@ import {
   AUDIT_LOGS,
 } from '../data/mockData';
 
+export interface HistoricalTrainingEventsOptions {
+  yearFrom?: number;
+  yearTo?: number;
+}
+
+export interface HistoricalTrainingEventYearCount {
+  year: number;
+  count: number;
+}
+
+export interface LiveWeatherForecastDay {
+  date: string;
+  temperature_max_c: number | null;
+  temperature_min_c: number | null;
+  precipitation_mm: number | null;
+  weather_code: number | null;
+  wind_speed_max_kmh: number | null;
+}
+
+export interface LiveWeather {
+  source: string;
+  station_name: string;
+  district: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  current_temperature_c: number;
+  relative_humidity_pct: number;
+  current_rainfall_mm_hr: number;
+  antecedent_72h_rainfall_mm: number;
+  soil_saturation_pct: number;
+  wind_speed_kmh: number;
+  radar_status: string;
+  bhuvan_satellite_tile: string;
+  is_live_feed: boolean;
+  last_updated: string;
+  forecast?: LiveWeatherForecastDay[];
+}
+
 const BASE_URL = '';
 
 async function fetchJson<T>(url: string, options?: RequestInit, fallback?: T): Promise<T> {
@@ -285,24 +324,7 @@ export const LandslideApi = {
   },
 
   // Real-Time Meteorological Telemetry (IMD / Open-Meteo)
-  async getLiveWeather(state = 'sikkim'): Promise<{
-    source: string;
-    station_name: string;
-    district: string;
-    state: string;
-    latitude: number;
-    longitude: number;
-    current_temperature_c: number;
-    relative_humidity_pct: number;
-    current_rainfall_mm_hr: number;
-    antecedent_72h_rainfall_mm: number;
-    soil_saturation_pct: number;
-    wind_speed_kmh: number;
-    radar_status: string;
-    bhuvan_satellite_tile: string;
-    is_live_feed: boolean;
-    last_updated: string;
-  }> {
+  async getLiveWeather(state = 'sikkim'): Promise<LiveWeather> {
     const fallback = {
       source: 'IMD Central Influx (Offline Fallback)',
       station_name: 'Mangan-Gangtok IMD AWS Hub',
@@ -320,6 +342,7 @@ export const LandslideApi = {
       bhuvan_satellite_tile: 'ISRO-BHUVAN-NER-01',
       is_live_feed: true,
       last_updated: 'Just now',
+      forecast: [],
     };
     return fetchJson(`/api/weather/live?state=${encodeURIComponent(state)}`, undefined, fallback);
   },
@@ -470,8 +493,21 @@ export const LandslideApi = {
   },
 
   // GIS ML Integration: Historical Training Events & Zone Real-Time Risk
-  async getHistoricalTrainingEvents(state?: NerState): Promise<HistoricalLandslideEvent[]> {
-    const query = state && state !== 'all' ? `?state=${encodeURIComponent(state)}` : '';
+  async getHistoricalTrainingEvents(
+    state?: NerState,
+    options: HistoricalTrainingEventsOptions = {}
+  ): Promise<HistoricalLandslideEvent[]> {
+    const params = new URLSearchParams();
+    if (state && state !== 'all') {
+      params.set('state', state);
+    }
+    if (options.yearFrom !== undefined) {
+      params.set('year_from', String(options.yearFrom));
+    }
+    if (options.yearTo !== undefined) {
+      params.set('year_to', String(options.yearTo));
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
     const fallback: HistoricalLandslideEvent[] = [
       {
         id: 'trn-evt-fallback-1',
@@ -526,6 +562,17 @@ export const LandslideApi = {
       },
     ];
     return fetchJson<HistoricalLandslideEvent[]>(`/api/zones/historical-training-events${query}`, undefined, fallback);
+  },
+
+  async getHistoricalTrainingEventsTimeline(): Promise<HistoricalTrainingEventYearCount[]> {
+    return fetchJson<HistoricalTrainingEventYearCount[]>(
+      '/api/zones/historical-training-events/timeline',
+      undefined,
+      [
+        { year: 2022, count: 2 },
+        { year: 2023, count: 1 },
+      ]
+    );
   },
 
   async getZoneMlRisk(zoneId: string, extraRainfall: number = 0): Promise<ZoneMlRiskEvaluation> {

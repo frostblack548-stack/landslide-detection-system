@@ -29,6 +29,7 @@ DATA_DIR = BASE_DIR / "data" / "landslides"
 
 MODEL_PATH = ML_OUTPUTS_DIR / "best_model.pkl"
 PREPROCESSOR_PATH = ML_OUTPUTS_DIR / "preprocessing_pipeline.pkl"
+TERRAIN_MODEL_PATH = ML_OUTPUTS_DIR / "terrain_model.pkl"
 METRICS_PATH = ML_OUTPUTS_DIR / "reports" / "evaluation_metrics.json"
 COMPARISON_PATH = ML_OUTPUTS_DIR / "model_comparison.csv"
 FEATURE_IMPORTANCE_PATH = ML_OUTPUTS_DIR / "feature_importance.csv"
@@ -36,6 +37,7 @@ FEATURE_IMPORTANCE_PATH = ML_OUTPUTS_DIR / "feature_importance.csv"
 # Load models into memory
 ml_model = None
 ml_preprocessor = None
+terrain_model_artifact = None
 
 try:
     if MODEL_PATH.exists():
@@ -44,6 +46,12 @@ try:
     if PREPROCESSOR_PATH.exists():
         ml_preprocessor = joblib.load(PREPROCESSOR_PATH)
         print(f"[ML Pipeline] Loaded preprocessor: {type(ml_preprocessor).__name__}")
+    if TERRAIN_MODEL_PATH.exists():
+        terrain_model_artifact = joblib.load(TERRAIN_MODEL_PATH)
+        print(
+            "[ML Pipeline] Loaded terrain model: "
+            f"{terrain_model_artifact['metrics'].get('total_records', 0):,} records"
+        )
 except Exception as e:
     print(f"[ML Pipeline] Warning: Could not initialize model or preprocessor: {e}")
 
@@ -74,12 +82,18 @@ def get_model_info():
     """Returns metadata about the active ML model."""
     return {
         "project": "LandslideGuard NER Early Warning System",
-        "model_name": "Random Forest Classifier (Optimized)",
-        "model_type": type(ml_model).__name__ if ml_model else "Not Loaded",
+        "model_name": "Terrain + Rainfall Ensemble",
+        "model_type": "ExtraTrees + RandomForest" if terrain_model_artifact and ml_model else type(ml_model).__name__ if ml_model else "Not Loaded",
         "preprocessor_type": type(ml_preprocessor).__name__ if ml_preprocessor else "Not Loaded",
         "target": "landslide_occurrence (0: Safe, 1: Landslide)",
-        "training_records": 523,
-        "test_records": 131,
+        "training_records": 14_426,
+        "test_records": 3_607,
+        "rainfall_training_records": 523,
+        "rainfall_test_records": 131,
+        "terrain_training_records": terrain_model_artifact.get("metrics", {}).get("training_records", 0) if terrain_model_artifact else 0,
+        "terrain_test_records": terrain_model_artifact.get("metrics", {}).get("test_records", 0) if terrain_model_artifact else 0,
+        "terrain_total_records": terrain_model_artifact.get("metrics", {}).get("total_records", 0) if terrain_model_artifact else 0,
+        "ensemble_weights": {"terrain": 0.7, "rainfall": 0.3},
         "features": [
             "elevation",
             "slope",
@@ -146,14 +160,24 @@ def predict_landslide(data: LandslidePredictionInput):
         # Apply preprocessing
         processed_input = ml_preprocessor.transform(input_df)
 
-        # Predict
-        prediction = int(ml_model.predict(processed_input)[0])
+        rainfall_probability = float(ml_model.predict_proba(processed_input)[0][1])
+        terrain_probability = None
 
-        if hasattr(ml_model, "predict_proba"):
-            probabilities = ml_model.predict_proba(processed_input)[0]
-            probability = float(probabilities[1]) if len(probabilities) >= 2 else float(probabilities[0])
-        else:
-            probability = float(prediction)
+        if terrain_model_artifact:
+            terrain_input = input_df[
+                ["elevation", "slope", "aspect", "soil_id", "landcover_class"]
+            ]
+            terrain_processed = terrain_model_artifact["preprocessor"].transform(terrain_input)
+            terrain_probability = float(
+                terrain_model_artifact["model"].predict_proba(terrain_processed)[0][1]
+            )
+
+        probability = (
+            (0.7 * terrain_probability) + (0.3 * rainfall_probability)
+            if terrain_probability is not None
+            else rainfall_probability
+        )
+        prediction = int(probability >= 0.5)
 
         # Risk Classification
         if probability >= 0.75:
@@ -177,7 +201,14 @@ def predict_landslide(data: LandslidePredictionInput):
             "risk_level": risk_level,
             "action_code": action_code,
             "input_features": data.dict(),
-            "model": "Random Forest (ROC-AUC: 0.896)",
+            "model": "Terrain + Rainfall Ensemble",
+            "model_details": {
+                "terrain_probability": round(terrain_probability, 4) if terrain_probability is not None else None,
+                "rainfall_probability": round(rainfall_probability, 4),
+                "terrain_weight": 0.7,
+                "rainfall_weight": 0.3,
+                "terrain_records": terrain_model_artifact.get("metrics", {}).get("total_records", 0) if terrain_model_artifact else 0,
+            },
         }
     except HTTPException:
         raise
