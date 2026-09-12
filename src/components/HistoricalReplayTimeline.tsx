@@ -24,7 +24,7 @@ export const HistoricalReplayTimeline: React.FC<HistoricalReplayTimelineProps> =
   maxYear = FALLBACK_MAX_YEAR,
   yearCounts = [],
   value = null,
-  onChange = () => undefined,
+  onChange = (_val: HistoricalReplayRange | null = null) => undefined,
 }) => {
   const safeMinYear = Math.min(minYear, maxYear);
   const safeMaxYear = Math.max(minYear, maxYear);

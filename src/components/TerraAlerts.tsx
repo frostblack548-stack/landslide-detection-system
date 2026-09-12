@@ -59,7 +59,7 @@ export const TerraAlerts: React.FC<TerraAlertsProps> = ({
   }, [selectedZone.coords]);
 
   // Extract regions
-  const regions: string[] = ['all', ...Array.from(new Set(zones.map((z) => z.state)))];
+  const regions: string[] = ['all', ...Array.from<string>(new Set(zones.map((z) => z.state)))];
 
   // Filtered zones acting as active alerts
   const filteredZones = zones.filter((z) => {

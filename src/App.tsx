@@ -126,12 +126,9 @@ export default function App() {
           ) ?? null
         : null;
 
-      if (historyState?.module === 'hills-regions') {
+      if (historyState?.module) {
         setSelectedHillRegion(region);
-        setActiveModule('hills-regions');
-      } else if (historyState?.module === 'risk-map') {
-        setSelectedHillRegion(region);
-        setActiveModule('risk-map');
+        setActiveModule(historyState.module);
       }
     };
 
@@ -332,6 +329,8 @@ export default function App() {
         {activeModule === 'hills-regions' && (
           <HillsMountainRegions
             theme={theme}
+            selectedRegion={selectedHillRegion}
+            onSelectRegion={setSelectedHillRegion}
             onNavigateToMap={navigateFromHillsToRiskMap}
           />
         )}

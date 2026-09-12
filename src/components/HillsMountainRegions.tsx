@@ -1,20 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   ChevronDown,
   CloudRain,
   Droplets,
+  ExternalLink,
   Loader2,
   Mountain,
   Search,
   ShieldCheck,
   Thermometer,
+  TriangleAlert,
   Wind,
 } from 'lucide-react';
-import { HILLS_AND_MOUNTAIN_REGIONS, HillsRegion } from '../data/hillsData';
+import {
+  HILLS_AND_MOUNTAIN_REGIONS,
+  HillsRegion,
+  calculateHaversineDistanceKm,
+} from '../data/hillsData';
 import { LandslideApi, LiveWeather } from '../services/api';
+import { EarthquakeResponse } from '../types';
 
 interface HillsMountainRegionsProps {
   theme?: 'dark' | 'light';
+  selectedRegion?: HillsRegion | null;
+  onSelectRegion?: (region: HillsRegion) => void;
   onNavigateToMap?: (region: HillsRegion) => void;
 }
 
@@ -42,14 +52,24 @@ const weatherDescription = (code: number | null) => {
 
 export const HillsMountainRegions: React.FC<HillsMountainRegionsProps> = ({
   theme = 'dark',
+  selectedRegion: propSelectedRegion = null,
+  onSelectRegion,
   onNavigateToMap,
 }) => {
   const isDark = theme === 'dark';
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState<HillsRegion | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<HillsRegion | null>(propSelectedRegion);
   const [collapsedStates, setCollapsedStates] = useState<Record<string, boolean>>({});
   const [weather, setWeather] = useState<LiveWeather | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [earthquakeData, setEarthquakeData] = useState<EarthquakeResponse | null>(null);
+  const [earthquakeLoading, setEarthquakeLoading] = useState(false);
+
+  useEffect(() => {
+    if (propSelectedRegion) {
+      setSelectedRegion(propSelectedRegion);
+    }
+  }, [propSelectedRegion]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const groupedRegions = useMemo(() => {
@@ -85,6 +105,11 @@ export const HillsMountainRegions: React.FC<HillsMountainRegionsProps> = ({
     ? WEATHER_STATE_BY_REGION[selectedRegion.state]
     : null;
 
+  const handleSelectRegion = (region: HillsRegion) => {
+    setSelectedRegion(region);
+    onSelectRegion?.(region);
+  };
+
   useEffect(() => {
     let active = true;
     if (!weatherState) {
@@ -107,6 +132,149 @@ export const HillsMountainRegions: React.FC<HillsMountainRegionsProps> = ({
       active = false;
     };
   }, [weatherState]);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedRegion) {
+      setEarthquakeData(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    setEarthquakeLoading(true);
+    const lat = selectedRegion.coordinatesVerified ? selectedRegion.latitude : undefined;
+    const lon = selectedRegion.coordinatesVerified ? selectedRegion.longitude : undefined;
+
+    LandslideApi.getEarthquakes(lat, lon)
+      .then((response) => {
+        if (active) setEarthquakeData(response);
+      })
+      .catch(() => {
+        if (active) {
+          setEarthquakeData({
+            earthquake_data_available: false,
+            source_status: 'temporarily_unavailable',
+            source: 'National Center for Seismology',
+            source_url: 'https://seismo.gov.in/',
+            events: [],
+            earthquake_trigger_score: 0,
+            message: 'Live earthquake data is temporarily unavailable.',
+          });
+        }
+      })
+      .finally(() => {
+        if (active) setEarthquakeLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    selectedRegion?.id,
+    selectedRegion?.coordinatesVerified,
+    selectedRegion?.latitude,
+    selectedRegion?.longitude,
+  ]);
+
+  const latestEarthquake = useMemo(() => {
+    return earthquakeData?.events && earthquakeData.events.length > 0
+      ? earthquakeData.events[0]
+      : null;
+  }, [earthquakeData]);
+
+  const latestDistanceKm = useMemo(() => {
+    if (
+      !selectedRegion?.coordinatesVerified ||
+      selectedRegion.latitude === undefined ||
+      selectedRegion.longitude === undefined ||
+      !latestEarthquake ||
+      !Number.isFinite(latestEarthquake.latitude) ||
+      !Number.isFinite(latestEarthquake.longitude)
+    ) {
+      return null;
+    }
+    const dist = calculateHaversineDistanceKm(
+      selectedRegion.latitude,
+      selectedRegion.longitude,
+      latestEarthquake.latitude,
+      latestEarthquake.longitude
+    );
+    return Number.isFinite(dist) ? Math.round(dist) : null;
+  }, [selectedRegion, latestEarthquake]);
+
+  const recentCounts = useMemo(() => {
+    if (!earthquakeData?.events) return { last24h: 0, last7d: 0 };
+    const now = Date.now();
+    const h24 = 24 * 60 * 60 * 1000;
+    const d7 = 7 * 24 * 60 * 60 * 1000;
+    let last24h = 0;
+    let last7d = 0;
+    for (const ev of earthquakeData.events) {
+      const t = new Date(ev.event_time).getTime();
+      if (!Number.isNaN(t)) {
+        const diff = now - t;
+        if (diff >= 0 && diff <= h24) last24h++;
+        if (diff >= 0 && diff <= d7) last7d++;
+      }
+    }
+    return { last24h, last7d };
+  }, [earthquakeData?.events]);
+
+  const derivedTrigger = useMemo(() => {
+    if (!earthquakeData) {
+      return {
+        level: 'LOW' as const,
+        label: 'LOW',
+        badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+      };
+    }
+    const score = earthquakeData.earthquake_trigger_score ?? 0;
+    if (
+      score >= 0.5 ||
+      (latestDistanceKm !== null &&
+        latestDistanceKm <= 100 &&
+        (latestEarthquake?.magnitude ?? 0) >= 4.5)
+    ) {
+      return {
+        level: 'HIGH' as const,
+        label: 'HIGH',
+        badgeClass: 'border-red-500/40 bg-red-500/15 text-red-300 animate-pulse',
+      };
+    }
+    if (
+      score >= 0.25 ||
+      (latestDistanceKm !== null &&
+        latestDistanceKm <= 250 &&
+        (latestEarthquake?.magnitude ?? 0) >= 3.8)
+    ) {
+      return {
+        level: 'MODERATE' as const,
+        label: 'MODERATE',
+        badgeClass: 'border-amber-500/40 bg-amber-500/15 text-amber-300',
+      };
+    }
+    return {
+      level: 'LOW' as const,
+      label: 'LOW',
+      badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    };
+  }, [earthquakeData, latestDistanceKm, latestEarthquake]);
+
+  const formatEventTime = (isoTime: string) => {
+    const d = new Date(isoTime);
+    if (Number.isNaN(d.getTime())) return isoTime || 'Time unavailable';
+    const diffHours = Math.round((Date.now() - d.getTime()) / (1000 * 3600));
+    if (diffHours >= 0 && diffHours < 24) {
+      return `${diffHours === 0 ? 'Just now' : `${diffHours}h ago`} (${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+    }
+    return d.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-3 pb-12 pt-4 sm:px-6">
@@ -190,7 +358,7 @@ export const HillsMountainRegions: React.FC<HillsMountainRegionsProps> = ({
                             <button
                               type="button"
                               key={region.id}
-                              onClick={() => setSelectedRegion(region)}
+                              onClick={() => handleSelectRegion(region)}
                               className={`rounded-lg border px-3 py-3 text-left transition-all ${
                                 selected
                                   ? 'border-cyan-400 bg-cyan-500/15 text-cyan-100 shadow-md shadow-cyan-950/30'
@@ -231,9 +399,29 @@ export const HillsMountainRegions: React.FC<HillsMountainRegionsProps> = ({
                     ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200'
                     : 'border-amber-400/25 bg-amber-400/10 text-amber-200'
                 }`}>
-                  {selectedRegion.coordinatesVerified
-                    ? 'Verified representative coordinates available. The existing Risk Map can focus this region.'
-                    : 'No verified project coordinates are available for this entry yet. GIS focus remains unchanged.'}
+                  <div>
+                    {selectedRegion.coordinatesVerified
+                      ? 'Verified representative coordinates available. The existing Risk Map can focus this region.'
+                      : 'Verified representative coordinates are currently unavailable for this region.'}
+                  </div>
+                  {selectedRegion.source?.name && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] font-mono opacity-85">
+                      <span className="text-slate-400">Source:</span>
+                      {selectedRegion.source.url ? (
+                        <a
+                          href={selectedRegion.source.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-cyan-300 underline hover:text-cyan-200"
+                        >
+                          <span>{selectedRegion.source.name}</span>
+                          <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      ) : (
+                        <span>{selectedRegion.source.name}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {onNavigateToMap && (
                   <button
@@ -310,6 +498,162 @@ export const HillsMountainRegions: React.FC<HillsMountainRegionsProps> = ({
                           </div>
                         </div>
                       )}
+                    </>
+                  )}
+                </div>
+
+                {/* Seismic Activity Section */}
+                <div className={`mt-5 border-t pt-5 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-400">
+                      <Activity className="h-4 w-4" />
+                      Seismic activity (NCS live)
+                    </div>
+                    {earthquakeLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-orange-300" />
+                    ) : (
+                      <span
+                        className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                          earthquakeData?.source_status === 'available'
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                            : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                        }`}
+                      >
+                        {earthquakeData?.source_status === 'available' ? 'ONLINE' : 'CACHED'}
+                      </span>
+                    )}
+                  </div>
+
+                  {earthquakeData?.earthquake_data_available === false && !earthquakeLoading ? (
+                    <div
+                      className={`mt-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-5 ${
+                        isDark ? 'text-amber-200' : 'text-amber-800'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <TriangleAlert className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                        <span>
+                          Live earthquake data is temporarily unavailable from the National Center for
+                          Seismology. Other monitoring feeds continue uninterrupted.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Derived Trigger Level Badge */}
+                      <div className="mt-3 flex items-center justify-between rounded-lg border p-2.5 bg-slate-950/20 border-slate-700/60">
+                        <div>
+                          <div className={`text-[10px] font-mono uppercase tracking-wider ${mutedTextClass}`}>
+                            Derived Seismic Trigger
+                          </div>
+                          <div className="mt-0.5 text-[11px] font-medium text-slate-300">
+                            Ground motion advisory
+                          </div>
+                        </div>
+                        <span
+                          className={`rounded-md border px-2.5 py-1 text-xs font-black font-mono tracking-wider ${derivedTrigger.badgeClass}`}
+                        >
+                          {derivedTrigger.label}
+                        </span>
+                      </div>
+
+                      {/* Latest Earthquake Card */}
+                      {latestEarthquake ? (
+                        <div
+                          className={`mt-3 rounded-lg border p-3 ${
+                            isDark ? 'border-slate-700 bg-slate-950/30' : 'border-slate-200 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className={`text-[10px] font-mono uppercase tracking-wider ${mutedTextClass}`}>
+                                Latest NCS Event
+                              </div>
+                              <div className="mt-1 text-xs font-bold text-slate-200 truncate max-w-[180px]">
+                                {latestEarthquake.location}
+                              </div>
+                            </div>
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-orange-400/50 bg-orange-500/15 text-sm font-black font-mono text-orange-300">
+                              {latestEarthquake.magnitude.toFixed(1)}
+                            </div>
+                          </div>
+
+                          <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px] font-mono">
+                            <div
+                              className={`rounded border p-1.5 ${
+                                isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-100 bg-slate-50'
+                              }`}
+                            >
+                              <span className={mutedTextClass}>Depth: </span>
+                              <span className="font-bold text-slate-200">
+                                {latestEarthquake.depth_km.toFixed(0)} km
+                              </span>
+                            </div>
+                            <div
+                              className={`rounded border p-1.5 ${
+                                isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-100 bg-slate-50'
+                              }`}
+                            >
+                              <span className={mutedTextClass}>Recency: </span>
+                              <span className="font-bold text-slate-200">
+                                {formatEventTime(latestEarthquake.event_time)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Region-Specific Distance */}
+                          <div className="mt-2.5 border-t border-slate-800/80 pt-2 text-[11px]">
+                            <span className={mutedTextClass}>Distance: </span>
+                            {latestDistanceKm !== null ? (
+                              <span className="font-mono font-bold text-cyan-300">
+                                {latestDistanceKm} km from {selectedRegion.name}
+                              </span>
+                            ) : (
+                              <span className="font-mono text-amber-300/90 italic">
+                                Region-specific seismic distance is unavailable.
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          className={`mt-3 rounded-lg border border-dashed p-3 text-center text-xs ${mutedTextClass}`}
+                        >
+                          No earthquake events currently recorded within regional range.
+                        </div>
+                      )}
+
+                      {/* Recent Activity Counts (24h / 7d) */}
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        <div
+                          className={`rounded-lg border p-2.5 ${
+                            isDark ? 'border-slate-700 bg-slate-950/30' : 'border-slate-200 bg-white'
+                          }`}
+                        >
+                          <div className={`text-[10px] font-mono ${mutedTextClass}`}>Last 24 Hours</div>
+                          <div className="mt-1 text-lg font-black font-mono text-orange-400">
+                            {recentCounts.last24h}{' '}
+                            <span className="text-[10px] font-normal text-slate-400">events</span>
+                          </div>
+                        </div>
+                        <div
+                          className={`rounded-lg border p-2.5 ${
+                            isDark ? 'border-slate-700 bg-slate-950/30' : 'border-slate-200 bg-white'
+                          }`}
+                        >
+                          <div className={`text-[10px] font-mono ${mutedTextClass}`}>Last 7 Days</div>
+                          <div className="mt-1 text-lg font-black font-mono text-cyan-400">
+                            {recentCounts.last7d}{' '}
+                            <span className="text-[10px] font-normal text-slate-400">events</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Educational Non-Alarmist Disclaimer */}
+                      <p className={`mt-3 text-[10px] leading-4 ${mutedTextClass}`}>
+                        Disclaimer: Seismic trigger indicates potential ground motion advisory from NCS
+                        feeds. It is an independent geophysical parameter and not a direct landslide prediction.
+                      </p>
                     </>
                   )}
                 </div>
